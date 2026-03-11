@@ -1,17 +1,29 @@
-from sqlalchemy.ext.asyncio import (
-    async_sessionmaker,
-    AsyncSession,
+from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker, create_async_engine
+from typing import AsyncGenerator
+
+from src.config import Settings
+
+settings = Settings()
+
+engine: AsyncEngine = create_async_engine(
+    str(settings.postgres_url),
+    pool_pre_ping=True,
 )
-from contextlib import asynccontextmanager
 
-from .dependency import engine
-
-SessionLocal = async_sessionmaker(
+SessionFactory = async_sessionmaker(
     bind=engine,
+    class_=AsyncSession,
     expire_on_commit=False,
 )
 
-@asynccontextmanager
-async def get_session() -> AsyncSession:
-    async with SessionLocal() as session:
-        yield session
+
+async def get_session() -> AsyncGenerator[AsyncSession, None]:
+    async with SessionFactory() as session:
+        try:
+            yield session
+            await session.commit()
+        except Exception:
+            await session.rollback()
+            raise
+        finally:
+            await session.close()

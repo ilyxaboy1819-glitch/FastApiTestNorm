@@ -1,94 +1,58 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, Response
 from uuid import UUID
 from typing import List
-import sqlalchemy as sa
+from http import HTTPStatus
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from src.db import get_session
-from src.models.profile import ProfileModel
 from src.schemas.profile import ProfileCreate, ProfileRead, ProfileUpdate
+from src.services.profile import ProfileService
+
+router = APIRouter(prefix="/api/v1/profiles", tags=["Profiles"])
 
 
-router = APIRouter(
-    prefix="/profiles",tags=["Profiles"])
+def get_profile_service(session: AsyncSession = Depends(get_session)) -> ProfileService:
+    return ProfileService(session)
 
 
-@router.post("/", response_model=ProfileRead)
-async def create_profile(profile_data: ProfileCreate):
-    async with get_session() as session:
-
-        existing = await session.execute(
-            sa.select(ProfileModel).where(
-                ProfileModel.user_id == profile_data.user_id
-            )
-        )
-
-        if existing.scalar_one_or_none():
-            raise HTTPException(
-                status_code=400,
-                detail="Profile for this user already exists"
-            )
-
-        profile = ProfileModel(**profile_data.model_dump())
-        session.add(profile)
-
-        await session.commit()
-        await session.refresh(profile)
-
-        return profile
+@router.post("/", response_model=ProfileRead, status_code=HTTPStatus.CREATED)
+async def create_profile(
+    data: ProfileCreate,
+    service: ProfileService = Depends(get_profile_service),
+) -> ProfileRead:
+    return await service.create(data)
 
 
-@router.get("/", response_model=List[ProfileRead])
-async def get_profiles(skip: int = 0, limit: int = 100):
-    async with get_session() as session:
-
-        profiles = await session.execute(
-            sa.select(ProfileModel)
-            .offset(skip)
-            .limit(limit)
-        )
-
-        return profiles.scalars().all()
+@router.get("/", response_model=List[ProfileRead], status_code=HTTPStatus.OK)
+async def get_profiles(
+    skip: int = 0,
+    limit: int = 100,
+    service: ProfileService = Depends(get_profile_service),
+) -> List[ProfileRead]:
+    return await service.get_all(skip=skip, limit=limit)
 
 
-@router.get("/{profile_id}", response_model=ProfileRead)
-async def get_profile(profile_id: UUID):
-    async with get_session() as session:
-
-        profile = await session.get(ProfileModel, profile_id)
-
-        if not profile:
-            raise HTTPException(status_code=404, detail="Profile not found")
-
-        return profile
+@router.get("/{profile_id}", response_model=ProfileRead, status_code=HTTPStatus.OK)
+async def get_profile(
+    profile_id: UUID,
+    service: ProfileService = Depends(get_profile_service),
+) -> ProfileRead:
+    return await service.get_by_id(profile_id)
 
 
-@router.put("/{profile_id}", response_model=ProfileRead)
-async def update_profile(profile_id: UUID, profile_data: ProfileUpdate):
-    async with get_session() as session:
-
-        profile = await session.get(ProfileModel, profile_id)
-
-        if not profile:
-            raise HTTPException(status_code=404, detail="Profile not found")
-
-        for field, value in profile_data.model_dump(exclude_unset=True).items():
-            setattr(profile, field, value)
-
-        await session.commit()
-        await session.refresh(profile)
-
-        return profile
+@router.put("/{profile_id}", response_model=ProfileRead, status_code=HTTPStatus.OK)
+async def update_profile(
+    profile_id: UUID,
+    data: ProfileUpdate,
+    service: ProfileService = Depends(get_profile_service),
+) -> ProfileRead:
+    return await service.update(profile_id, data)
 
 
-@router.delete("/{profile_id}", status_code=204)
-async def delete_profile(profile_id: UUID):
-    async with get_session() as session:
-
-        profile = await session.get(ProfileModel, profile_id)
-
-        if not profile:
-            raise HTTPException(status_code=404, detail="Profile not found")
-
-        await session.delete(profile)
-        await session.commit()
-
-        return None
+@router.delete("/{profile_id}", status_code=HTTPStatus.NO_CONTENT)
+async def delete_profile(
+    profile_id: UUID,
+    service: ProfileService = Depends(get_profile_service),
+) -> Response:
+    await service.delete(profile_id)
+    return Response(status_code=HTTPStatus.NO_CONTENT)

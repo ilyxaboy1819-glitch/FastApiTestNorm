@@ -4,19 +4,24 @@ from datetime import datetime
 from pydantic import BaseModel, Field
 
 
+class CategoryInput(BaseModel):
+    name: str
+
+
 class ApplicationBase(BaseModel):
     title: str
     description: Optional[str] = None
 
 
 class ApplicationCreate(ApplicationBase):
-    categories: List[str] = Field(default_factory=list)
+    user_id: UUID
+    categories: List[CategoryInput] = Field(default_factory=list)
 
 
 class ApplicationUpdate(BaseModel):
     title: Optional[str] = None
     description: Optional[str] = None
-    categories: Optional[List[str]] = None
+    categories: Optional[List[CategoryInput]] = None
 
 
 class UserShort(BaseModel):

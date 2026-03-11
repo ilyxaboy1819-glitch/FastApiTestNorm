@@ -1,4 +1,3 @@
-
 from uuid import UUID
 from typing import Optional, List
 from pydantic import BaseModel, Field
@@ -13,8 +12,9 @@ class CategoryCreate(CategoryBase):
     pass
 
 
-class CategoryUpdate(CategoryBase):
-    pass
+class CategoryUpdate(BaseModel):
+    name: Optional[str] = None
+    description: Optional[str] = None
 
 
 class ApplicationShort(BaseModel):

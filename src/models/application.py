@@ -3,8 +3,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from uuid import UUID, uuid4
 from typing import List, Optional
 from datetime import datetime
-from src.db.base import Base
-from src.models.user import UserModel
+from src.models.base import Base
 
 
 application_category = sa.Table(
@@ -54,19 +53,16 @@ class ApplicationModel(Base):
     user: Mapped["UserModel"] = relationship(
         "UserModel",
         back_populates="applications",
-        lazy="selectin"
     )
 
     categories: Mapped[List["CategoryModel"]] = relationship(
         "CategoryModel",
         secondary=application_category,
         back_populates="applications",
-        lazy="selectin"
     )
 
     comments: Mapped[List["CommentModel"]] = relationship(
         "CommentModel",
         back_populates="application",
         cascade="all, delete-orphan",
-        lazy="selectin"
     )

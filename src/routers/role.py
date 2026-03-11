@@ -1,111 +1,58 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, Response
 from uuid import UUID
 from typing import List
-import sqlalchemy as sa
-from sqlalchemy.orm import selectinload
+from http import HTTPStatus
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from src.db import get_session
-from src.models.role import RoleModel
 from src.schemas.role import RoleCreate, RoleRead, RoleUpdate
+from src.services.role import RoleService
+
+router = APIRouter(prefix="/api/v1/roles", tags=["Roles"])
 
 
-router = APIRouter(
-    prefix="/roles",tags=["Roles"])
+def get_role_service(session: AsyncSession = Depends(get_session)) -> RoleService:
+    return RoleService(session)
 
 
-@router.post("/", response_model=RoleRead)
-async def create_role(role_data: RoleCreate):
-    async with get_session() as session:
-
-        existing = await session.execute(
-            sa.select(RoleModel).where(RoleModel.name == role_data.name)
-        )
-
-        if existing.scalar_one_or_none():
-            raise HTTPException(
-                status_code=400,
-                detail="Role with this name already exists"
-            )
-
-        role = RoleModel(**role_data.model_dump())
-        session.add(role)
-
-        await session.commit()
-        await session.refresh(role)
-
-        return role
+@router.post("/", response_model=RoleRead, status_code=HTTPStatus.CREATED)
+async def create_role(
+    data: RoleCreate,
+    service: RoleService = Depends(get_role_service),
+) -> RoleRead:
+    return await service.create(data)
 
 
-@router.get("/", response_model=List[RoleRead])
-async def get_roles(skip: int = 0, limit: int = 100):
-    async with get_session() as session:
-
-        result = await session.execute(
-            sa.select(RoleModel)
-            .options(selectinload(RoleModel.users))
-            .offset(skip)
-            .limit(limit)
-        )
-
-        return result.scalars().all()
+@router.get("/", response_model=List[RoleRead], status_code=HTTPStatus.OK)
+async def get_roles(
+    skip: int = 0,
+    limit: int = 100,
+    service: RoleService = Depends(get_role_service),
+) -> List[RoleRead]:
+    return await service.get_all(skip=skip, limit=limit)
 
 
-@router.get("/{role_id}", response_model=RoleRead)
-async def get_role(role_id: UUID):
-    async with get_session() as session:
-
-        result = await session.execute(
-            sa.select(RoleModel)
-            .options(selectinload(RoleModel.users))
-            .where(RoleModel.id == role_id)
-        )
-
-        role = result.scalar_one_or_none()
-
-        if not role:
-            raise HTTPException(status_code=404, detail="Role not found")
-
-        return role
+@router.get("/{role_id}", response_model=RoleRead, status_code=HTTPStatus.OK)
+async def get_role(
+    role_id: UUID,
+    service: RoleService = Depends(get_role_service),
+) -> RoleRead:
+    return await service.get_by_id(role_id)
 
 
-@router.put("/{role_id}", response_model=RoleRead)
-async def update_role(role_id: UUID, role_data: RoleUpdate):
-    async with get_session() as session:
-
-        role = await session.get(RoleModel, role_id)
-
-        if not role:
-            raise HTTPException(status_code=404, detail="Role not found")
-
-        # Проверка уникальности имени
-        if role_data.name and role_data.name != role.name:
-            existing = await session.execute(
-                sa.select(RoleModel).where(RoleModel.name == role_data.name)
-            )
-            if existing.scalar_one_or_none():
-                raise HTTPException(
-                    status_code=400,
-                    detail="Role with this name already exists"
-                )
-
-        for field, value in role_data.model_dump(exclude_unset=True).items():
-            setattr(role, field, value)
-
-        await session.commit()
-        await session.refresh(role)
-
-        return role
+@router.put("/{role_id}", response_model=RoleRead, status_code=HTTPStatus.OK)
+async def update_role(
+    role_id: UUID,
+    data: RoleUpdate,
+    service: RoleService = Depends(get_role_service),
+) -> RoleRead:
+    return await service.update(role_id, data)
 
 
-@router.delete("/{role_id}", status_code=204)
-async def delete_role(role_id: UUID):
-    async with get_session() as session:
-
-        role = await session.get(RoleModel, role_id)
-
-        if not role:
-            raise HTTPException(status_code=404, detail="Role not found")
-
-        await session.delete(role)
-        await session.commit()
-
-        return None
+@router.delete("/{role_id}", status_code=HTTPStatus.NO_CONTENT)
+async def delete_role(
+    role_id: UUID,
+    service: RoleService = Depends(get_role_service),
+) -> Response:
+    await service.delete(role_id)
+    return Response(status_code=HTTPStatus.NO_CONTENT)

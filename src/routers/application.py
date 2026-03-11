@@ -1,147 +1,58 @@
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, Depends, Response
 from uuid import UUID
 from typing import List
-import sqlalchemy as sa
-from sqlalchemy.orm import selectinload
+from http import HTTPStatus
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from src.db import get_session
-from src.models.application import ApplicationModel
-from src.models.category import CategoryModel
-from src.models.user import UserModel
-from src.schemas.application import (
-    ApplicationCreate,
-    ApplicationRead,
-    ApplicationUpdate,
-)
+from src.schemas.application import ApplicationCreate, ApplicationRead, ApplicationUpdate
+from src.services.application import ApplicationService
 
-async def get_current_user() -> UserModel:
-    raise NotImplementedError
+router = APIRouter(prefix="/api/v1/applications", tags=["Applications"])
 
 
-router = APIRouter(prefix="/applications",tags=["Applications"],)
+def get_application_service(session: AsyncSession = Depends(get_session)) -> ApplicationService:
+    return ApplicationService(session)
 
 
-@router.post("/", response_model=ApplicationRead)
+@router.post("/", response_model=ApplicationRead, status_code=HTTPStatus.CREATED)
 async def create_application(
-    app_data: ApplicationCreate,
-    current_user: UserModel = Depends(get_current_user),
-):
-    async with get_session() as session:
-
-        app = ApplicationModel(
-            title=app_data.title,
-            description=app_data.description,
-            user_id=current_user.id,
-        )
-
-        session.add(app)
-        await session.flush()
-
-        for cat_name in app_data.categories:
-            result = await session.execute(
-                sa.select(CategoryModel).where(CategoryModel.name == cat_name)
-            )
-            category = result.scalar_one_or_none()
-
-            if not category:
-                category = CategoryModel(name=cat_name)
-                session.add(category)
-                await session.flush()
-
-            app.categories.append(category)
-
-        await session.commit()
-        await session.refresh(app)
-
-        return app
+    data: ApplicationCreate,
+    service: ApplicationService = Depends(get_application_service),
+) -> ApplicationRead:
+    return await service.create(data)
 
 
-@router.get("/", response_model=List[ApplicationRead])
-async def get_applications(skip: int = 0, limit: int = 100):
-    async with get_session() as session:
-
-        result = await session.execute(
-            sa.select(ApplicationModel)
-            .options(
-                selectinload(ApplicationModel.user),
-                selectinload(ApplicationModel.categories),
-                selectinload(ApplicationModel.comments),
-            )
-            .offset(skip)
-            .limit(limit)
-        )
-
-        return result.scalars().all()
+@router.get("/", response_model=List[ApplicationRead], status_code=HTTPStatus.OK)
+async def get_applications(
+    skip: int = 0,
+    limit: int = 100,
+    service: ApplicationService = Depends(get_application_service),
+) -> List[ApplicationRead]:
+    return await service.get_all(skip=skip, limit=limit)
 
 
-@router.get("/{app_id}", response_model=ApplicationRead)
-async def get_application(app_id: UUID):
-    async with get_session() as session:
-
-        result = await session.execute(
-            sa.select(ApplicationModel)
-            .options(
-                selectinload(ApplicationModel.user),
-                selectinload(ApplicationModel.categories),
-                selectinload(ApplicationModel.comments),
-            )
-            .where(ApplicationModel.id == app_id)
-        )
-
-        app = result.scalar_one_or_none()
-
-        if not app:
-            raise HTTPException(status_code=404, detail="Application not found")
-
-        return app
+@router.get("/{app_id}", response_model=ApplicationRead, status_code=HTTPStatus.OK)
+async def get_application(
+    app_id: UUID,
+    service: ApplicationService = Depends(get_application_service),
+) -> ApplicationRead:
+    return await service.get_by_id(app_id)
 
 
-@router.put("/{app_id}", response_model=ApplicationRead)
-async def update_application(app_id: UUID, app_data: ApplicationUpdate):
-    async with get_session() as session:
-
-        app = await session.get(ApplicationModel, app_id)
-
-        if not app:
-            raise HTTPException(status_code=404, detail="Application not found")
-
-        if app_data.title is not None:
-            app.title = app_data.title
-
-        if app_data.description is not None:
-            app.description = app_data.description
-
-        if app_data.categories is not None:
-            app.categories.clear()
-
-            for cat_name in app_data.categories:
-                result = await session.execute(
-                    sa.select(CategoryModel).where(CategoryModel.name == cat_name)
-                )
-                category = result.scalar_one_or_none()
-
-                if not category:
-                    category = CategoryModel(name=cat_name)
-                    session.add(category)
-                    await session.flush()
-
-                app.categories.append(category)
-
-        await session.commit()
-        await session.refresh(app)
-
-        return app
+@router.put("/{app_id}", response_model=ApplicationRead, status_code=HTTPStatus.OK)
+async def update_application(
+    app_id: UUID,
+    data: ApplicationUpdate,
+    service: ApplicationService = Depends(get_application_service),
+) -> ApplicationRead:
+    return await service.update(app_id, data)
 
 
-@router.delete("/{app_id}", status_code=204)
-async def delete_application(app_id: UUID):
-    async with get_session() as session:
-
-        app = await session.get(ApplicationModel, app_id)
-
-        if not app:
-            raise HTTPException(status_code=404, detail="Application not found")
-
-        await session.delete(app)
-        await session.commit()
-
-        return None
+@router.delete("/{app_id}", status_code=HTTPStatus.NO_CONTENT)
+async def delete_application(
+    app_id: UUID,
+    service: ApplicationService = Depends(get_application_service),
+) -> Response:
+    await service.delete(app_id)
+    return Response(status_code=HTTPStatus.NO_CONTENT)

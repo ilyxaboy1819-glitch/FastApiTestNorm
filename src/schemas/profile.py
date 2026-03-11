@@ -10,7 +10,7 @@ class ProfileBase(BaseModel):
 
 
 class ProfileCreate(ProfileBase):
-    pass
+    user_id: UUID
 
 
 class ProfileUpdate(ProfileBase):

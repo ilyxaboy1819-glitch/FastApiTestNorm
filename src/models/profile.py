@@ -2,7 +2,7 @@ import sqlalchemy as sa
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from uuid import UUID, uuid4
 from typing import Optional
-from src.db.base import Base
+from src.models.base import Base
 
 
 class ProfileModel(Base):
