@@ -1,18 +1,13 @@
-from fastapi import APIRouter, Depends, Response
+from fastapi import APIRouter, Depends, Response, Query
 from uuid import UUID
 from typing import List
 from http import HTTPStatus
-from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.db import get_session
+from src.dependencies import get_application_service
 from src.schemas.application import ApplicationCreate, ApplicationRead, ApplicationUpdate
 from src.services.application import ApplicationService
 
 router = APIRouter(prefix="/api/v1/applications", tags=["Applications"])
-
-
-def get_application_service(session: AsyncSession = Depends(get_session)) -> ApplicationService:
-    return ApplicationService(session)
 
 
 @router.post("/", response_model=ApplicationRead, status_code=HTTPStatus.CREATED)
@@ -25,12 +20,11 @@ async def create_application(
 
 @router.get("/", response_model=List[ApplicationRead], status_code=HTTPStatus.OK)
 async def get_applications(
-    skip: int = 0,
-    limit: int = 100,
+    skip: int = Query(0, ge=0),
+    limit: int = Query(100, ge=1, le=100),
     service: ApplicationService = Depends(get_application_service),
 ) -> List[ApplicationRead]:
     return await service.get_all(skip=skip, limit=limit)
-
 
 @router.get("/{app_id}", response_model=ApplicationRead, status_code=HTTPStatus.OK)
 async def get_application(
@@ -53,6 +47,5 @@ async def update_application(
 async def delete_application(
     app_id: UUID,
     service: ApplicationService = Depends(get_application_service),
-) -> Response:
+) -> None:
     await service.delete(app_id)
-    return Response(status_code=HTTPStatus.NO_CONTENT)

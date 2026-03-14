@@ -1,58 +1,52 @@
-from fastapi import APIRouter, Depends, Response
+from fastapi import APIRouter, Depends, Query
 from uuid import UUID
 from typing import List
 from http import HTTPStatus
-from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.db import get_session
+from src.dependencies import get_user_service
 from src.schemas.profile import ProfileCreate, ProfileRead, ProfileUpdate
-from src.services.profile import ProfileService
+from src.services.user import UserService
 
 router = APIRouter(prefix="/api/v1/profiles", tags=["Profiles"])
-
-
-def get_profile_service(session: AsyncSession = Depends(get_session)) -> ProfileService:
-    return ProfileService(session)
 
 
 @router.post("/", response_model=ProfileRead, status_code=HTTPStatus.CREATED)
 async def create_profile(
     data: ProfileCreate,
-    service: ProfileService = Depends(get_profile_service),
+    service: UserService = Depends(get_user_service),
 ) -> ProfileRead:
-    return await service.create(data)
+    return await service.create_profile(data)
 
 
 @router.get("/", response_model=List[ProfileRead], status_code=HTTPStatus.OK)
 async def get_profiles(
-    skip: int = 0,
-    limit: int = 100,
-    service: ProfileService = Depends(get_profile_service),
+    skip: int = Query(0, ge=0),
+    limit: int = Query(100, ge=1, le=100),
+    service: UserService = Depends(get_user_service),
 ) -> List[ProfileRead]:
-    return await service.get_all(skip=skip, limit=limit)
+    return await service.get_all_profiles(skip=skip, limit=limit)
 
 
 @router.get("/{profile_id}", response_model=ProfileRead, status_code=HTTPStatus.OK)
 async def get_profile(
     profile_id: UUID,
-    service: ProfileService = Depends(get_profile_service),
+    service: UserService = Depends(get_user_service),
 ) -> ProfileRead:
-    return await service.get_by_id(profile_id)
+    return await service.get_profile_by_id(profile_id)
 
 
 @router.put("/{profile_id}", response_model=ProfileRead, status_code=HTTPStatus.OK)
 async def update_profile(
     profile_id: UUID,
     data: ProfileUpdate,
-    service: ProfileService = Depends(get_profile_service),
+    service: UserService = Depends(get_user_service),
 ) -> ProfileRead:
-    return await service.update(profile_id, data)
+    return await service.update_profile(profile_id, data)
 
 
 @router.delete("/{profile_id}", status_code=HTTPStatus.NO_CONTENT)
 async def delete_profile(
     profile_id: UUID,
-    service: ProfileService = Depends(get_profile_service),
-) -> Response:
-    await service.delete(profile_id)
-    return Response(status_code=HTTPStatus.NO_CONTENT)
+    service: UserService = Depends(get_user_service),
+) -> None:
+    await service.delete_profile(profile_id)

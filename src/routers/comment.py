@@ -1,59 +1,53 @@
-from fastapi import APIRouter, Depends, Response
+from fastapi import APIRouter, Depends, Query
 from uuid import UUID
 from typing import List
 from http import HTTPStatus
-from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.db import get_session
+from src.dependencies import get_application_service
 from src.schemas.comment import CommentCreate, CommentRead, CommentUpdate
-from src.services.comment import CommentService
+from src.services.application import ApplicationService
 
 router = APIRouter(prefix="/api/v1/comments", tags=["Comments"])
-
-
-def get_comment_service(session: AsyncSession = Depends(get_session)) -> CommentService:
-    return CommentService(session)
 
 
 @router.post("/applications/{app_id}", response_model=CommentRead, status_code=HTTPStatus.CREATED)
 async def create_comment(
     app_id: UUID,
     data: CommentCreate,
-    service: CommentService = Depends(get_comment_service),
+    service: ApplicationService = Depends(get_application_service),
 ) -> CommentRead:
-    return await service.create(app_id, data)
+    return await service.create_comment(app_id, data)
 
 
 @router.get("/", response_model=List[CommentRead], status_code=HTTPStatus.OK)
 async def get_comments(
-    skip: int = 0,
-    limit: int = 100,
-    service: CommentService = Depends(get_comment_service),
+    skip: int = Query(0, ge=0),
+    limit: int = Query(100, ge=1, le=100),
+    service: ApplicationService = Depends(get_application_service),
 ) -> List[CommentRead]:
-    return await service.get_all(skip=skip, limit=limit)
+    return await service.get_all_comments(skip=skip, limit=limit)
 
 
 @router.get("/{comment_id}", response_model=CommentRead, status_code=HTTPStatus.OK)
 async def get_comment(
     comment_id: UUID,
-    service: CommentService = Depends(get_comment_service),
+    service: ApplicationService = Depends(get_application_service),
 ) -> CommentRead:
-    return await service.get_by_id(comment_id)
+    return await service.get_comment_by_id(comment_id)
 
 
 @router.put("/{comment_id}", response_model=CommentRead, status_code=HTTPStatus.OK)
 async def update_comment(
     comment_id: UUID,
     data: CommentUpdate,
-    service: CommentService = Depends(get_comment_service),
+    service: ApplicationService = Depends(get_application_service),
 ) -> CommentRead:
-    return await service.update(comment_id, data)
+    return await service.update_comment(comment_id, data)
 
 
 @router.delete("/{comment_id}", status_code=HTTPStatus.NO_CONTENT)
 async def delete_comment(
     comment_id: UUID,
-    service: CommentService = Depends(get_comment_service),
-) -> Response:
-    await service.delete(comment_id)
-    return Response(status_code=HTTPStatus.NO_CONTENT)
+    service: ApplicationService = Depends(get_application_service),
+) -> None:
+    await service.delete_comment(comment_id)

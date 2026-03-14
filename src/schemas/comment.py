@@ -1,10 +1,10 @@
 from uuid import UUID
 from datetime import datetime
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class CommentBase(BaseModel):
-    text: str
+    text: str = Field(..., min_length=1, max_length=2000)
 
 
 class CommentCreate(CommentBase):
@@ -12,7 +12,7 @@ class CommentCreate(CommentBase):
 
 
 class CommentUpdate(BaseModel):
-    text: str | None = None
+    text: str | None = Field(None, min_length=1, max_length=2000)
 
 
 class ApplicationShort(BaseModel):

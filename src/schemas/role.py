@@ -4,16 +4,17 @@ from pydantic import BaseModel, Field
 
 
 class RoleBase(BaseModel):
-    name: str
-    description: Optional[str] = None
+    name: str = Field(..., min_length=1, max_length=50)
+    description: Optional[str] = Field(None, max_length=255)
 
 
 class RoleCreate(RoleBase):
     pass
 
 
-class RoleUpdate(RoleBase):
-    pass
+class RoleUpdate(BaseModel):
+    name: Optional[str] = Field(None, min_length=1, max_length=50)
+    description: Optional[str] = Field(None, max_length=255)
 
 
 class UserShort(BaseModel):

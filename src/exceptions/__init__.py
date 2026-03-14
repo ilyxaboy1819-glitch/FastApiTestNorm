@@ -1,12 +1,3 @@
-from fastapi import HTTPException
-from http import HTTPStatus
+from .exceptions import NotFoundException, AlreadyExistsException
 
-
-class NotFoundException(HTTPException):
-    def __init__(self, detail: str):
-        super().__init__(status_code=HTTPStatus.NOT_FOUND, detail=detail)
-
-
-class AlreadyExistsException(HTTPException):
-    def __init__(self, detail: str):
-        super().__init__(status_code=HTTPStatus.BAD_REQUEST, detail=detail)
+__all__ = ["NotFoundException", "AlreadyExistsException"]

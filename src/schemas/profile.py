@@ -1,12 +1,12 @@
 from uuid import UUID
 from typing import Optional
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class ProfileBase(BaseModel):
-    bio: Optional[str] = None
-    avatar_url: Optional[str] = None
-    phone: Optional[str] = None
+    bio: Optional[str] = Field(None, max_length=1000)
+    avatar_url: Optional[str] = Field(None, max_length=255)
+    phone: Optional[str] = Field(None, min_length=5, max_length=20)
 
 
 class ProfileCreate(ProfileBase):

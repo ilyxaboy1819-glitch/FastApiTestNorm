@@ -38,11 +38,16 @@ class ApplicationModel(Base):
         sa.DateTime,
         server_default=sa.func.now()
     )
-
     updated_at: Mapped[datetime] = mapped_column(
         sa.DateTime,
         server_default=sa.func.now(),
+        default=sa.func.now(),
         onupdate=sa.func.now()
+    )
+    is_deleted: Mapped[bool] = mapped_column(
+        sa.Boolean,
+        default=False,
+        server_default=sa.text("false")
     )
 
     user_id: Mapped[UUID] = mapped_column(

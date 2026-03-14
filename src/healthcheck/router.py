@@ -1,15 +1,10 @@
 from fastapi import APIRouter
-from pydantic import BaseModel
-from http import HTTPStatus
 
-
-class HealthcheckResponse(BaseModel):
-    status: str
-
+from src.healthcheck.schemas import HealthcheckResponse
 
 router = APIRouter(tags=["Health"], prefix="/api/v1")
 
 
-@router.get("/healthcheck", response_model=HealthcheckResponse, status_code=HTTPStatus.OK)
+@router.get("/healthcheck", response_model=HealthcheckResponse)
 async def healthcheck() -> HealthcheckResponse:
     return HealthcheckResponse(status="ok")

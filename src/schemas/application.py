@@ -1,16 +1,16 @@
 from uuid import UUID
 from typing import Optional, List
 from datetime import datetime
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 class CategoryInput(BaseModel):
-    name: str
+    name: str = Field(..., min_length=1, max_length=100)
 
 
 class ApplicationBase(BaseModel):
-    title: str
-    description: Optional[str] = None
+    title: str = Field(..., min_length=1, max_length=200)
+    description: Optional[str] = Field(None, max_length=1000)
 
 
 class ApplicationCreate(ApplicationBase):
@@ -19,8 +19,8 @@ class ApplicationCreate(ApplicationBase):
 
 
 class ApplicationUpdate(BaseModel):
-    title: Optional[str] = None
-    description: Optional[str] = None
+    title: Optional[str] = Field(None, min_length=1, max_length=200)
+    description: Optional[str] = Field(None, max_length=1000)
     categories: Optional[List[CategoryInput]] = None
 
 

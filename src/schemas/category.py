@@ -4,8 +4,8 @@ from pydantic import BaseModel, Field
 
 
 class CategoryBase(BaseModel):
-    name: str
-    description: Optional[str] = None
+    name: str = Field(..., min_length=1, max_length=100)
+    description: Optional[str] = Field(None, max_length=255)
 
 
 class CategoryCreate(CategoryBase):
@@ -13,8 +13,8 @@ class CategoryCreate(CategoryBase):
 
 
 class CategoryUpdate(BaseModel):
-    name: Optional[str] = None
-    description: Optional[str] = None
+    name: Optional[str] = Field(None, min_length=1, max_length=100)
+    description: Optional[str] = Field(None, max_length=255)
 
 
 class ApplicationShort(BaseModel):

@@ -2,6 +2,7 @@ import sqlalchemy as sa
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from uuid import UUID, uuid4
 from typing import List, Optional
+from datetime import datetime
 from src.models.base import Base
 
 
@@ -20,6 +21,22 @@ class UserModel(Base):
     username: Mapped[str] = mapped_column(sa.String(100), nullable=False)
     email: Mapped[str] = mapped_column(sa.String(100), unique=True, nullable=False)
     full_name: Mapped[Optional[str]] = mapped_column(sa.String(100), nullable=True)
+
+    created_at: Mapped[datetime] = mapped_column(
+        sa.DateTime,
+        server_default=sa.func.now()
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        sa.DateTime,
+        server_default=sa.func.now(),
+        default=sa.func.now(),
+        onupdate=sa.func.now()
+    )
+    is_deleted: Mapped[bool] = mapped_column(
+        sa.Boolean,
+        default=False,
+        server_default=sa.text("false")
+    )
 
     applications: Mapped[List["ApplicationModel"]] = relationship(
         "ApplicationModel", back_populates="user", cascade="all, delete-orphan"
