@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Response, Query
+from fastapi import APIRouter, Depends, Query
 from uuid import UUID
 from typing import List
 from http import HTTPStatus

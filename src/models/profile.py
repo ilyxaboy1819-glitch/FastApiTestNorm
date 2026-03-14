@@ -44,5 +44,4 @@ class ProfileModel(Base):
     user: Mapped["UserModel"] = relationship(
         "UserModel",
         back_populates="profile",
-        lazy="selectin"
     )
