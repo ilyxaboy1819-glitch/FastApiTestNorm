@@ -1,27 +1,41 @@
 from uuid import UUID
 from typing import Optional, List
 from datetime import datetime
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, field_validator
 
 
 class CategoryInput(BaseModel):
-    name: str = Field(..., min_length=1, max_length=100)
+    id: UUID
 
 
 class ApplicationBase(BaseModel):
-    title: str = Field(..., min_length=1, max_length=200)
-    description: Optional[str] = Field(None, max_length=1000)
+    title: str
+    description: Optional[str] = None
+
+    @field_validator('title')
+    @classmethod
+    def title_must_not_be_empty(cls, v: str) -> str:
+        if not v.strip():
+            raise ValueError('Title must not be empty')
+        return v.strip()
 
 
 class ApplicationCreate(ApplicationBase):
     user_id: UUID
-    categories: List[CategoryInput] = Field(default_factory=list)
+    categories: List[CategoryInput] = []
 
 
 class ApplicationUpdate(BaseModel):
-    title: Optional[str] = Field(None, min_length=1, max_length=200)
-    description: Optional[str] = Field(None, max_length=1000)
+    title: Optional[str] = None
+    description: Optional[str] = None
     categories: Optional[List[CategoryInput]] = None
+
+    @field_validator('title')
+    @classmethod
+    def title_must_not_be_empty(cls, v: Optional[str]) -> Optional[str]:
+        if v is not None and not v.strip():
+            raise ValueError('Title must not be empty')
+        return v.strip() if v else v
 
 
 class UserShort(BaseModel):
@@ -51,11 +65,11 @@ class CommentShort(BaseModel):
 class ApplicationRead(ApplicationBase):
     id: UUID
     created_at: datetime
-    updated_at: datetime
+    updated_at: Optional[datetime] = None
 
     user: UserShort
-    categories: List[CategoryShort] = Field(default_factory=list)
-    comments: List[CommentShort] = Field(default_factory=list)
+    categories: List[CategoryShort] = []
+    comments: List[CommentShort] = []
 
     class Config:
         from_attributes = True

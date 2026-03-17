@@ -28,7 +28,11 @@ class UserService:
             )
             .where(UserModel.id == user_id)
         )
-        return result.scalar_one()
+        user = result.scalar_one_or_none()
+        if not user:
+            logger.warning(f"User with id={user_id} not found")
+            raise NotFoundException(f"User with id={user_id} not found")
+        return user
 
     async def create(self, data: UserCreate) -> UserModel:
         existing = await self.session.execute(
@@ -43,9 +47,8 @@ class UserService:
 
         user = UserModel(**data.model_dump())
         self.session.add(user)
-        await self.session.flush()
         logger.info(f"User created with id={user.id}")
-        return await self._get_with_relations(user.id)
+        return user
 
     async def get_all(self, skip: int = 0, limit: int = 100) -> List[UserModel]:
         logger.info(f"Getting users skip={skip} limit={limit}")
@@ -61,38 +64,19 @@ class UserService:
         return list(result.scalars().all())
 
     async def get_by_id(self, user_id: UUID) -> UserModel:
-        result = await self.session.execute(
-            sa.select(UserModel)
-            .options(
-                selectinload(UserModel.profile),
-                selectinload(UserModel.roles),
-            )
-            .where(UserModel.id == user_id)
-        )
-        user = result.scalar_one_or_none()
-        if not user:
-            logger.warning(f"User with id={user_id} not found")
-            raise NotFoundException(f"User with id={user_id} not found")
-        return user
+        return await self._get_with_relations(user_id)
 
     async def update(self, user_id: UUID, data: UserUpdate) -> UserModel:
-        user = await self.session.get(UserModel, user_id)
-        if not user:
-            logger.warning(f"User with id={user_id} not found")
-            raise NotFoundException(f"User with id={user_id} not found")
+        user = await self._get_with_relations(user_id)
 
         for field, value in data.model_dump(exclude_unset=True).items():
             setattr(user, field, value)
 
-        await self.session.flush()
         logger.info(f"User updated with id={user_id}")
-        return await self._get_with_relations(user_id)
+        return user
 
     async def delete(self, user_id: UUID) -> None:
-        user = await self.session.get(UserModel, user_id)
-        if not user:
-            logger.warning(f"User with id={user_id} not found")
-            raise NotFoundException(f"User with id={user_id} not found")
+        user = await self._get_with_relations(user_id)
         await self.session.delete(user)
         logger.info(f"User deleted with id={user_id}")
 
@@ -108,8 +92,6 @@ class UserService:
 
         profile = ProfileModel(**data.model_dump())
         self.session.add(profile)
-        await self.session.flush()
-        await self.session.refresh(profile)
         logger.info(f"Profile created with id={profile.id}")
         return profile
 
@@ -128,23 +110,15 @@ class UserService:
         return profile
 
     async def update_profile(self, profile_id: UUID, data: ProfileUpdate) -> ProfileModel:
-        profile = await self.session.get(ProfileModel, profile_id)
-        if not profile:
-            logger.warning(f"Profile with id={profile_id} not found")
-            raise NotFoundException(f"Profile with id={profile_id} not found")
+        profile = await self.get_profile_by_id(profile_id)
 
         for field, value in data.model_dump(exclude_unset=True).items():
             setattr(profile, field, value)
 
-        await self.session.flush()
-        await self.session.refresh(profile)
         logger.info(f"Profile updated with id={profile_id}")
         return profile
 
     async def delete_profile(self, profile_id: UUID) -> None:
-        profile = await self.session.get(ProfileModel, profile_id)
-        if not profile:
-            logger.warning(f"Profile with id={profile_id} not found")
-            raise NotFoundException(f"Profile with id={profile_id} not found")
+        profile = await self.get_profile_by_id(profile_id)
         await self.session.delete(profile)
         logger.info(f"Profile deleted with id={profile_id}")

@@ -1,11 +1,18 @@
 from uuid import UUID
 from typing import Optional, List
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, field_validator
 
 
 class RoleBase(BaseModel):
-    name: str = Field(..., min_length=1, max_length=50)
-    description: Optional[str] = Field(None, max_length=255)
+    name: str
+    description: Optional[str] = None
+
+    @field_validator('name')
+    @classmethod
+    def name_must_not_be_empty(cls, v: str) -> str:
+        if not v.strip():
+            raise ValueError('Name must not be empty')
+        return v.strip()
 
 
 class RoleCreate(RoleBase):
@@ -13,8 +20,15 @@ class RoleCreate(RoleBase):
 
 
 class RoleUpdate(BaseModel):
-    name: Optional[str] = Field(None, min_length=1, max_length=50)
-    description: Optional[str] = Field(None, max_length=255)
+    name: Optional[str] = None
+    description: Optional[str] = None
+
+    @field_validator('name')
+    @classmethod
+    def name_must_not_be_empty(cls, v: Optional[str]) -> Optional[str]:
+        if v is not None and not v.strip():
+            raise ValueError('Name must not be empty')
+        return v.strip() if v else v
 
 
 class UserShort(BaseModel):
@@ -27,7 +41,7 @@ class UserShort(BaseModel):
 
 class RoleRead(RoleBase):
     id: UUID
-    users: List[UserShort] = Field(default_factory=list)
+    users: List[UserShort] = []
 
     class Config:
         from_attributes = True

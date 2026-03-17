@@ -11,22 +11,20 @@ class RoleModel(Base):
     __tablename__ = 'roles'
 
     id: Mapped[UUID] = mapped_column(sa.UUID(as_uuid=True), primary_key=True, default=uuid4)
-    name: Mapped[str] = mapped_column(sa.String(50), unique=True, nullable=False)
-    description: Mapped[Optional[str]] = mapped_column(sa.String(255), nullable=True)
+    name: Mapped[str] = mapped_column(sa.String(), unique=True, nullable=False)
+    description: Mapped[Optional[str]] = mapped_column(sa.Text, nullable=True)
 
     created_at: Mapped[datetime] = mapped_column(
         sa.DateTime,
         server_default=sa.func.now()
     )
-    updated_at: Mapped[datetime] = mapped_column(
+    updated_at: Mapped[Optional[datetime]] = mapped_column(
         sa.DateTime,
-        server_default=sa.func.now(),
-        default=sa.func.now(),
+        nullable=True,
         onupdate=sa.func.now()
     )
     is_deleted: Mapped[bool] = mapped_column(
         sa.Boolean,
-        default=False,
         server_default=sa.text("false")
     )
 

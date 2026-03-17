@@ -5,10 +5,7 @@ from starlette.middleware.cors import CORSMiddleware
 from src.healthcheck.router import router as healthcheck_router
 from src.routers.user import router as user_router
 from src.routers.application import router as application_router
-from src.routers.category import router as category_router
-from src.routers.profile import router as profile_router
 from src.routers.role import router as role_router
-from src.routers.comment import router as comment_router
 
 
 def get_app() -> FastAPI:
@@ -29,10 +26,7 @@ def get_app() -> FastAPI:
     app.include_router(healthcheck_router)
     app.include_router(user_router)
     app.include_router(application_router)
-    app.include_router(category_router)
-    app.include_router(profile_router)
     app.include_router(role_router)
-    app.include_router(comment_router)
 
     return app
 

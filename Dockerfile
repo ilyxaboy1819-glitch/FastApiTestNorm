@@ -2,7 +2,11 @@ FROM python:3.13-slim AS builder
 
 WORKDIR /app
 
-RUN pip install --no-cache-dir poetry
+RUN apt-get update && apt-get install -y curl \
+    && curl -sSL https://install.python-poetry.org | python3 - \
+    && apt-get clean
+
+ENV PATH="/root/.local/bin:$PATH"
 
 COPY pyproject.toml ./
 

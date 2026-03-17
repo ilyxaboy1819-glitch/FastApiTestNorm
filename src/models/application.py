@@ -38,15 +38,13 @@ class ApplicationModel(Base):
         sa.DateTime,
         server_default=sa.func.now()
     )
-    updated_at: Mapped[datetime] = mapped_column(
+    updated_at: Mapped[Optional[datetime]] = mapped_column(
         sa.DateTime,
-        server_default=sa.func.now(),
-        default=sa.func.now(),
+        nullable=True,
         onupdate=sa.func.now()
     )
     is_deleted: Mapped[bool] = mapped_column(
         sa.Boolean,
-        default=False,
         server_default=sa.text("false")
     )
 

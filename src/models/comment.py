@@ -1,6 +1,7 @@
 import sqlalchemy as sa
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from uuid import UUID, uuid4
+from typing import Optional
 from datetime import datetime
 from src.models.base import Base
 
@@ -15,15 +16,13 @@ class CommentModel(Base):
         sa.DateTime,
         server_default=sa.func.now()
     )
-    updated_at: Mapped[datetime] = mapped_column(
+    updated_at: Mapped[Optional[datetime]] = mapped_column(
         sa.DateTime,
-        server_default=sa.func.now(),
-        default=sa.func.now(),
+        nullable=True,
         onupdate=sa.func.now()
     )
     is_deleted: Mapped[bool] = mapped_column(
         sa.Boolean,
-        default=False,
         server_default=sa.text("false")
     )
 

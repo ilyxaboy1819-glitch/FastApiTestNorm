@@ -16,22 +16,20 @@ class ProfileModel(Base):
     )
 
     bio: Mapped[Optional[str]] = mapped_column(sa.Text, nullable=True)
-    avatar_url: Mapped[Optional[str]] = mapped_column(sa.String(255), nullable=True)
-    phone: Mapped[Optional[str]] = mapped_column(sa.String(20), nullable=True)
+    avatar_url: Mapped[Optional[str]] = mapped_column(sa.Text, nullable=True)
+    phone: Mapped[Optional[str]] = mapped_column(sa.String(), nullable=True)
 
     created_at: Mapped[datetime] = mapped_column(
         sa.DateTime,
         server_default=sa.func.now()
     )
-    updated_at: Mapped[datetime] = mapped_column(
+    updated_at: Mapped[Optional[datetime]] = mapped_column(
         sa.DateTime,
-        server_default=sa.func.now(),
-        default=sa.func.now(),
+        nullable=True,
         onupdate=sa.func.now()
     )
     is_deleted: Mapped[bool] = mapped_column(
         sa.Boolean,
-        default=False,
         server_default=sa.text("false")
     )
 

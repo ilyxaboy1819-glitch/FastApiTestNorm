@@ -1,4 +1,4 @@
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr, field_validator
 from uuid import UUID
 from typing import Optional, List
 
@@ -20,15 +20,29 @@ class ProfileShort(BaseModel):
 
 
 class UserCreate(BaseModel):
-    username: str = Field(..., min_length=3, max_length=100)
+    username: str
     email: EmailStr
-    full_name: Optional[str] = Field(None, max_length=100)
+    full_name: Optional[str] = None
+
+    @field_validator('username')
+    @classmethod
+    def username_must_not_be_empty(cls, v: str) -> str:
+        if not v.strip():
+            raise ValueError('Username must not be empty')
+        return v.strip()
 
 
 class UserUpdate(BaseModel):
-    username: Optional[str] = Field(None, min_length=3, max_length=100)
+    username: Optional[str] = None
     email: Optional[EmailStr] = None
-    full_name: Optional[str] = Field(None, max_length=100)
+    full_name: Optional[str] = None
+
+    @field_validator('username')
+    @classmethod
+    def username_must_not_be_empty(cls, v: Optional[str]) -> Optional[str]:
+        if v is not None and not v.strip():
+            raise ValueError('Username must not be empty')
+        return v.strip() if v else v
 
 
 class UserRead(BaseModel):

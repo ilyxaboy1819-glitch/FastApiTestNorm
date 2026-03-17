@@ -1,10 +1,18 @@
 from uuid import UUID
+from typing import Optional
 from datetime import datetime
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, field_validator
 
 
 class CommentBase(BaseModel):
-    text: str = Field(..., min_length=1, max_length=2000)
+    text: str
+
+    @field_validator('text')
+    @classmethod
+    def text_must_not_be_empty(cls, v: str) -> str:
+        if not v.strip():
+            raise ValueError('Text must not be empty')
+        return v.strip()
 
 
 class CommentCreate(CommentBase):
@@ -12,7 +20,14 @@ class CommentCreate(CommentBase):
 
 
 class CommentUpdate(BaseModel):
-    text: str | None = Field(None, min_length=1, max_length=2000)
+    text: Optional[str] = None
+
+    @field_validator('text')
+    @classmethod
+    def text_must_not_be_empty(cls, v: Optional[str]) -> Optional[str]:
+        if v is not None and not v.strip():
+            raise ValueError('Text must not be empty')
+        return v.strip() if v else v
 
 
 class ApplicationShort(BaseModel):

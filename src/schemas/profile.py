@@ -1,12 +1,19 @@
 from uuid import UUID
 from typing import Optional
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, field_validator
 
 
 class ProfileBase(BaseModel):
-    bio: Optional[str] = Field(None, max_length=1000)
-    avatar_url: Optional[str] = Field(None, max_length=255)
-    phone: Optional[str] = Field(None, min_length=5, max_length=20)
+    bio: Optional[str] = None
+    avatar_url: Optional[str] = None
+    phone: Optional[str] = None
+
+    @field_validator('phone')
+    @classmethod
+    def phone_must_be_valid(cls, v: Optional[str]) -> Optional[str]:
+        if v is not None and len(v.strip()) < 5:
+            raise ValueError('Phone must be at least 5 characters')
+        return v.strip() if v else v
 
 
 class ProfileCreate(ProfileBase):
