@@ -19,69 +19,92 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    op.create_table('users',
-    sa.Column('id', sa.UUID(), nullable=False),
-    sa.Column('username', sa.String(length=100), nullable=False),
-    sa.Column('email', sa.String(length=100), nullable=False),
-    sa.Column('full_name', sa.String(length=100), nullable=True),
-    sa.PrimaryKeyConstraint('id'),
-    sa.UniqueConstraint('email')
+    op.create_table(
+        'users',
+        sa.Column('id', sa.UUID(), nullable=False),
+        sa.Column('username', sa.String(), nullable=False),
+        sa.Column('email', sa.String(), nullable=False),
+        sa.Column('full_name', sa.Text(), nullable=True),
+        sa.Column('created_at', sa.DateTime(), server_default=sa.text('now()'), nullable=False),
+        sa.Column('updated_at', sa.DateTime(), nullable=True),
+        sa.Column('is_deleted', sa.Boolean(), server_default=sa.text('false'), nullable=False),
+        sa.PrimaryKeyConstraint('id'),
+        sa.UniqueConstraint('email')
     )
-    op.create_table('categories',
-    sa.Column('id', sa.UUID(), nullable=False),
-    sa.Column('name', sa.String(length=100), nullable=False),
-    sa.Column('description', sa.String(length=255), nullable=True),
-    sa.PrimaryKeyConstraint('id'),
-    sa.UniqueConstraint('name')
+    op.create_table(
+        'categories',
+        sa.Column('id', sa.UUID(), nullable=False),
+        sa.Column('name', sa.String(), nullable=False),
+        sa.Column('description', sa.Text(), nullable=True),
+        sa.Column('created_at', sa.DateTime(), server_default=sa.text('now()'), nullable=False),
+        sa.Column('updated_at', sa.DateTime(), nullable=True),
+        sa.Column('is_deleted', sa.Boolean(), server_default=sa.text('false'), nullable=False),
+        sa.PrimaryKeyConstraint('id'),
+        sa.UniqueConstraint('name')
     )
-    op.create_table('roles',
-    sa.Column('id', sa.UUID(), nullable=False),
-    sa.Column('name', sa.String(length=50), nullable=False),
-    sa.Column('description', sa.String(length=255), nullable=True),
-    sa.PrimaryKeyConstraint('id'),
-    sa.UniqueConstraint('name')
+    op.create_table(
+        'roles',
+        sa.Column('id', sa.UUID(), nullable=False),
+        sa.Column('name', sa.String(), nullable=False),
+        sa.Column('description', sa.Text(), nullable=True),
+        sa.Column('created_at', sa.DateTime(), server_default=sa.text('now()'), nullable=False),
+        sa.Column('updated_at', sa.DateTime(), nullable=True),
+        sa.Column('is_deleted', sa.Boolean(), server_default=sa.text('false'), nullable=False),
+        sa.PrimaryKeyConstraint('id'),
+        sa.UniqueConstraint('name')
     )
-    op.create_table('applications',
-    sa.Column('id', sa.UUID(), nullable=False),
-    sa.Column('title', sa.String(length=200), nullable=False),
-    sa.Column('description', sa.Text(), nullable=True),
-    sa.Column('created_at', sa.DateTime(), server_default=sa.text('now()'), nullable=False),
-    sa.Column('updated_at', sa.DateTime(), server_default=sa.text('now()'), nullable=False),
-    sa.Column('user_id', sa.UUID(), nullable=False),
-    sa.ForeignKeyConstraint(['user_id'], ['users.id'], ondelete='CASCADE'),
-    sa.PrimaryKeyConstraint('id')
+    op.create_table(
+        'applications',
+        sa.Column('id', sa.UUID(), nullable=False),
+        sa.Column('title', sa.String(length=200), nullable=False),
+        sa.Column('description', sa.Text(), nullable=True),
+        sa.Column('created_at', sa.DateTime(), server_default=sa.text('now()'), nullable=False),
+        sa.Column('updated_at', sa.DateTime(), nullable=True),
+        sa.Column('is_deleted', sa.Boolean(), server_default=sa.text('false'), nullable=False),
+        sa.Column('user_id', sa.UUID(), nullable=False),
+        sa.ForeignKeyConstraint(['user_id'], ['users.id'], ondelete='CASCADE'),
+        sa.PrimaryKeyConstraint('id')
     )
-    op.create_table('profiles',
-    sa.Column('id', sa.UUID(), nullable=False),
-    sa.Column('bio', sa.Text(), nullable=True),
-    sa.Column('avatar_url', sa.String(length=255), nullable=True),
-    sa.Column('phone', sa.String(length=20), nullable=True),
-    sa.Column('user_id', sa.UUID(), nullable=False),
-    sa.ForeignKeyConstraint(['user_id'], ['users.id'], ondelete='CASCADE'),
-    sa.PrimaryKeyConstraint('id'),
-    sa.UniqueConstraint('user_id')
+    op.create_table(
+        'profiles',
+        sa.Column('id', sa.UUID(), nullable=False),
+        sa.Column('bio', sa.Text(), nullable=True),
+        sa.Column('avatar_url', sa.Text(), nullable=True),
+        sa.Column('phone', sa.String(), nullable=True),
+        sa.Column('created_at', sa.DateTime(), server_default=sa.text('now()'), nullable=False),
+        sa.Column('updated_at', sa.DateTime(), nullable=True),
+        sa.Column('is_deleted', sa.Boolean(), server_default=sa.text('false'), nullable=False),
+        sa.Column('user_id', sa.UUID(), nullable=False),
+        sa.ForeignKeyConstraint(['user_id'], ['users.id'], ondelete='CASCADE'),
+        sa.PrimaryKeyConstraint('id'),
+        sa.UniqueConstraint('user_id')
     )
-    op.create_table('user_roles',
-    sa.Column('user_id', sa.UUID(), nullable=False),
-    sa.Column('role_id', sa.UUID(), nullable=False),
-    sa.ForeignKeyConstraint(['role_id'], ['roles.id'], ondelete='CASCADE'),
-    sa.ForeignKeyConstraint(['user_id'], ['users.id'], ondelete='CASCADE'),
-    sa.PrimaryKeyConstraint('user_id', 'role_id')
+    op.create_table(
+        'user_roles',
+        sa.Column('user_id', sa.UUID(), nullable=False),
+        sa.Column('role_id', sa.UUID(), nullable=False),
+        sa.ForeignKeyConstraint(['role_id'], ['roles.id'], ondelete='CASCADE'),
+        sa.ForeignKeyConstraint(['user_id'], ['users.id'], ondelete='CASCADE'),
+        sa.PrimaryKeyConstraint('user_id', 'role_id')
     )
-    op.create_table('application_category',
-    sa.Column('application_id', sa.UUID(), nullable=False),
-    sa.Column('category_id', sa.UUID(), nullable=False),
-    sa.ForeignKeyConstraint(['application_id'], ['applications.id'], ondelete='CASCADE'),
-    sa.ForeignKeyConstraint(['category_id'], ['categories.id'], ondelete='CASCADE'),
-    sa.PrimaryKeyConstraint('application_id', 'category_id')
+    op.create_table(
+        'application_category',
+        sa.Column('application_id', sa.UUID(), nullable=False),
+        sa.Column('category_id', sa.UUID(), nullable=False),
+        sa.ForeignKeyConstraint(['application_id'], ['applications.id'], ondelete='CASCADE'),
+        sa.ForeignKeyConstraint(['category_id'], ['categories.id'], ondelete='CASCADE'),
+        sa.PrimaryKeyConstraint('application_id', 'category_id')
     )
-    op.create_table('comments',
-    sa.Column('id', sa.UUID(), nullable=False),
-    sa.Column('text', sa.Text(), nullable=False),
-    sa.Column('created_at', sa.DateTime(), server_default=sa.text('now()'), nullable=False),
-    sa.Column('application_id', sa.UUID(), nullable=False),
-    sa.ForeignKeyConstraint(['application_id'], ['applications.id'], ondelete='CASCADE'),
-    sa.PrimaryKeyConstraint('id')
+    op.create_table(
+        'comments',
+        sa.Column('id', sa.UUID(), nullable=False),
+        sa.Column('text', sa.Text(), nullable=False),
+        sa.Column('created_at', sa.DateTime(), server_default=sa.text('now()'), nullable=False),
+        sa.Column('updated_at', sa.DateTime(), nullable=True),
+        sa.Column('is_deleted', sa.Boolean(), server_default=sa.text('false'), nullable=False),
+        sa.Column('application_id', sa.UUID(), nullable=False),
+        sa.ForeignKeyConstraint(['application_id'], ['applications.id'], ondelete='CASCADE'),
+        sa.PrimaryKeyConstraint('id')
     )
 
 

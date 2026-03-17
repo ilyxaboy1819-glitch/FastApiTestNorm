@@ -38,14 +38,6 @@ class ApplicationUpdate(BaseModel):
         return v.strip() if v else v
 
 
-class UserShort(BaseModel):
-    id: UUID
-    username: str
-
-    class Config:
-        from_attributes = True
-
-
 class CategoryShort(BaseModel):
     id: UUID
     name: str
@@ -67,7 +59,7 @@ class ApplicationRead(ApplicationBase):
     created_at: datetime
     updated_at: Optional[datetime] = None
 
-    user: UserShort
+    user_id: UUID
     categories: List[CategoryShort] = []
     comments: List[CommentShort] = []
 

@@ -51,8 +51,9 @@ class ApplicationService:
             if category:
                 app.categories.append(category)
 
+        await self.session.flush()
         logger.info(f"Application created with id={app.id}")
-        return app
+        return await self._get_app_with_relations(app.id)
 
     async def get_all(self, skip: int = 0, limit: int = 100) -> List[ApplicationModel]:
         logger.info(f"Getting applications skip={skip} limit={limit}")
