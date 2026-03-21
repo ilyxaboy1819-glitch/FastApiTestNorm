@@ -5,7 +5,7 @@ from http import HTTPStatus
 
 from src.dependencies import get_user_service
 from src.schemas.user import UserCreate, UserRead, UserUpdate
-from src.schemas.profile import ProfileCreate, ProfileRead, ProfileUpdate
+from src.schemas.profile import ProfileCreate, ProfileRead, ProfileBase
 from src.services.user import UserService
 
 router = APIRouter(prefix="/api/v1", tags=["Users"])
@@ -81,7 +81,7 @@ async def get_profile(
 @router.put("/profiles/{profile_id}", response_model=ProfileRead, status_code=HTTPStatus.OK)
 async def update_profile(
     profile_id: UUID,
-    data: ProfileUpdate,
+    data: ProfileBase,
     service: UserService = Depends(get_user_service),
 ) -> ProfileRead:
     return await service.update_profile(profile_id, data)

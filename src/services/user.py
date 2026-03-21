@@ -8,7 +8,7 @@ from sqlalchemy.orm import selectinload
 from src.models.user import UserModel
 from src.models.profile import ProfileModel
 from src.schemas.user import UserCreate, UserUpdate
-from src.schemas.profile import ProfileCreate, ProfileUpdate
+from src.schemas.profile import ProfileCreate, ProfileBase
 from src.exceptions import NotFoundException, AlreadyExistsException
 
 logger = logging.getLogger(__name__)
@@ -109,7 +109,7 @@ class UserService:
             raise NotFoundException(f"Profile with id={profile_id} not found")
         return profile
 
-    async def update_profile(self, profile_id: UUID, data: ProfileUpdate) -> ProfileModel:
+    async def update_profile(self, profile_id: UUID, data: ProfileBase) -> ProfileModel:
         profile = await self.get_profile_by_id(profile_id)
 
         for field, value in data.model_dump(exclude_unset=True).items():

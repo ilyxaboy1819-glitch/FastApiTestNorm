@@ -1,7 +1,8 @@
-from fastapi import FastAPI
-from fastapi.responses import UJSONResponse
+from fastapi import FastAPI, Request
+from fastapi.responses import UJSONResponse, JSONResponse
 from starlette.middleware.cors import CORSMiddleware
 
+from src.exceptions import ValidationException
 from src.healthcheck.router import router as healthcheck_router
 from src.routers.user import router as user_router
 from src.routers.application import router as application_router
@@ -22,6 +23,13 @@ def get_app() -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
+
+    @app.exception_handler(ValidationException)
+    async def validation_exception_handler(request: Request, exc: ValidationException):
+        return JSONResponse(
+            status_code=422,
+            content={"error": exc.message, "field": exc.field},
+        )
 
     app.include_router(healthcheck_router)
     app.include_router(user_router)

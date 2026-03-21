@@ -2,6 +2,8 @@ from pydantic import BaseModel, EmailStr, field_validator
 from uuid import UUID
 from typing import Optional, List
 
+from src.exceptions import ValidationException
+
 
 class RoleShort(BaseModel):
     id: UUID
@@ -28,21 +30,21 @@ class UserCreate(BaseModel):
     @classmethod
     def username_must_not_be_empty(cls, v: str) -> str:
         if not v.strip():
-            raise ValueError('Username must not be empty')
+            raise ValidationException(field="username", message="Username must not be empty")
         return v.strip()
 
 
 class UserUpdate(BaseModel):
-    username: Optional[str] = None
-    email: Optional[EmailStr] = None
+    username: str
+    email: EmailStr
     full_name: Optional[str] = None
 
     @field_validator('username')
     @classmethod
-    def username_must_not_be_empty(cls, v: Optional[str]) -> Optional[str]:
-        if v is not None and not v.strip():
-            raise ValueError('Username must not be empty')
-        return v.strip() if v else v
+    def username_must_not_be_empty(cls, v: str) -> str:
+        if not v.strip():
+            raise ValidationException(field="username", message="Username must not be empty")
+        return v.strip()
 
 
 class UserRead(BaseModel):

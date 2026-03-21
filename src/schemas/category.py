@@ -2,6 +2,8 @@ from uuid import UUID
 from typing import Optional, List
 from pydantic import BaseModel, field_validator
 
+from src.exceptions import ValidationException
+
 
 class CategoryBase(BaseModel):
     name: str
@@ -11,24 +13,20 @@ class CategoryBase(BaseModel):
     @classmethod
     def name_must_not_be_empty(cls, v: str) -> str:
         if not v.strip():
-            raise ValueError('Name must not be empty')
+            raise ValidationException(field="name", message="Name must not be empty")
         return v.strip()
 
 
-class CategoryCreate(CategoryBase):
-    pass
-
-
 class CategoryUpdate(BaseModel):
-    name: Optional[str] = None
+    name: str
     description: Optional[str] = None
 
     @field_validator('name')
     @classmethod
-    def name_must_not_be_empty(cls, v: Optional[str]) -> Optional[str]:
-        if v is not None and not v.strip():
-            raise ValueError('Name must not be empty')
-        return v.strip() if v else v
+    def name_must_not_be_empty(cls, v: str) -> str:
+        if not v.strip():
+            raise ValidationException(field="name", message="Name must not be empty")
+        return v.strip()
 
 
 class ApplicationShort(BaseModel):

@@ -9,4 +9,10 @@ class NotFoundException(HTTPException):
 
 class AlreadyExistsException(HTTPException):
     def __init__(self, detail: str):
-        super().__init__(status_code=HTTPStatus.BAD_REQUEST, detail=detail)
+        super().__init__(status_code=HTTPStatus.CONFLICT, detail=detail)
+
+
+class ValidationException(Exception):
+    def __init__(self, field: str, message: str):
+        self.field = field
+        self.message = message
