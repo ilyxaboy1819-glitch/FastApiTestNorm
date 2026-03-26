@@ -15,10 +15,6 @@ class CommentBase(BaseModel):
         return v.strip()
 
 
-class CommentCreate(CommentBase):
-    pass
-
-
 class CommentRead(CommentBase):
     id: UUID
     application_id: UUID

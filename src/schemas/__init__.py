@@ -3,7 +3,7 @@ from .profile import ProfileRead, ProfileCreate, ProfileBase
 from .role import RoleRead, RoleCreate, RoleUpdate
 from .application import ApplicationRead, ApplicationCreate, ApplicationUpdate
 from .category import CategoryRead, CategoryUpdate
-from .comment import CommentRead, CommentCreate
+from .comment import CommentRead
 
 CategoryRead.model_rebuild()
 RoleRead.model_rebuild()
