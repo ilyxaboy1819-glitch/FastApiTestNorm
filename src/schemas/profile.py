@@ -1,8 +1,11 @@
+import re
 from uuid import UUID
 from typing import Optional
 from pydantic import BaseModel, field_validator
 
 from src.exceptions import ValidationException
+
+RF_PHONE_REGEX = re.compile(r'^(\+7|7|8)\d{10}$')
 
 
 class ProfileBase(BaseModel):
@@ -13,9 +16,15 @@ class ProfileBase(BaseModel):
     @field_validator('phone')
     @classmethod
     def phone_must_be_valid(cls, v: Optional[str]) -> Optional[str]:
-        if v is not None and len(v.strip()) < 5:
-            raise ValidationException(field="phone", message="Phone must be at least 5 characters")
-        return v.strip() if v else v
+        if v is not None:
+            cleaned = v.strip()
+            if not RF_PHONE_REGEX.match(cleaned):
+                raise ValidationException(
+                    field="phone",
+                    message="Phone must be a valid Russian number: +7XXXXXXXXXX, 7XXXXXXXXXX or 8XXXXXXXXXX"
+                )
+            return cleaned
+        return v
 
 
 class ProfileCreate(ProfileBase):

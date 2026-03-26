@@ -19,7 +19,7 @@ async def create_user(
     return await service.create(data)
 
 
-@router.get("/users/", response_model=List[UserRead], status_code=HTTPStatus.OK)
+@router.get("/users/", response_model=List[UserRead])
 async def get_users(
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=100),
@@ -28,7 +28,7 @@ async def get_users(
     return await service.get_all(skip=skip, limit=limit)
 
 
-@router.get("/users/{user_id}", response_model=UserRead, status_code=HTTPStatus.OK)
+@router.get("/users/{user_id}", response_model=UserRead)
 async def get_user(
     user_id: UUID,
     service: UserService = Depends(get_user_service),
@@ -36,7 +36,7 @@ async def get_user(
     return await service.get_by_id(user_id)
 
 
-@router.put("/users/{user_id}", response_model=UserRead, status_code=HTTPStatus.OK)
+@router.put("/users/{user_id}", response_model=UserRead)
 async def update_user(
     user_id: UUID,
     data: UserUpdate,
@@ -61,7 +61,7 @@ async def create_profile(
     return await service.create_profile(data)
 
 
-@router.get("/profiles/", response_model=List[ProfileRead], status_code=HTTPStatus.OK)
+@router.get("/profiles/", response_model=List[ProfileRead])
 async def get_profiles(
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=100),
@@ -70,7 +70,7 @@ async def get_profiles(
     return await service.get_all_profiles(skip=skip, limit=limit)
 
 
-@router.get("/profiles/{profile_id}", response_model=ProfileRead, status_code=HTTPStatus.OK)
+@router.get("/profiles/{profile_id}", response_model=ProfileRead)
 async def get_profile(
     profile_id: UUID,
     service: UserService = Depends(get_user_service),
@@ -78,7 +78,7 @@ async def get_profile(
     return await service.get_profile_by_id(profile_id)
 
 
-@router.put("/profiles/{profile_id}", response_model=ProfileRead, status_code=HTTPStatus.OK)
+@router.put("/profiles/{profile_id}", response_model=ProfileRead)
 async def update_profile(
     profile_id: UUID,
     data: ProfileBase,

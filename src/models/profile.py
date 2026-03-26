@@ -2,10 +2,10 @@ import sqlalchemy as sa
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from uuid import UUID
 from typing import Optional
-from src.models.base import Base, TimestampMixin
+from src.models.base import Base
 
 
-class ProfileModel(Base, TimestampMixin):
+class ProfileModel(Base):
     __tablename__ = 'profiles'
 
     bio: Mapped[Optional[str]] = mapped_column(sa.Text, nullable=True)

@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from src.models.role import RoleModel
-from src.schemas.role import RoleCreate, RoleUpdate
+from src.schemas.role import RoleCreate, RoleUpdate, RoleRead
 from src.exceptions import NotFoundException, AlreadyExistsException
 
 logger = logging.getLogger(__name__)
@@ -18,7 +18,7 @@ class RoleService:
     def __init__(self, session: AsyncSession):
         self.session = session
 
-    async def _get_with_relations(self, role_id: UUID) -> RoleModel:
+    async def _get_role_orm(self, role_id: UUID) -> RoleModel:
         result = await self.session.execute(
             sa.select(RoleModel)
             .options(selectinload(RoleModel.users))
@@ -30,7 +30,7 @@ class RoleService:
             raise NotFoundException(f"Role with id={role_id} not found")
         return role
 
-    async def create(self, data: RoleCreate) -> RoleModel:
+    async def create(self, data: RoleCreate) -> RoleRead:
         existing = await self.session.execute(
             sa.select(RoleModel).where(RoleModel.name == data.name)
         )
@@ -39,25 +39,28 @@ class RoleService:
             raise AlreadyExistsException("Role with this name already exists")
 
         role = RoleModel(**data.model_dump())
+        role.users = []
         self.session.add(role)
         logger.info(f"Role created with id={role.id}")
-        return role
+        return RoleRead.model_validate(role)
 
-    async def get_all(self, skip: int = 0, limit: int = 100) -> List[RoleModel]:
+    async def get_all(self, skip: int = 0, limit: int = 100) -> List[RoleRead]:
         logger.info(f"Getting roles skip={skip} limit={limit}")
         result = await self.session.execute(
             sa.select(RoleModel)
             .options(selectinload(RoleModel.users))
             .offset(skip)
             .limit(limit)
+            .with_for_update()
         )
-        return list(result.scalars().all())
+        return [RoleRead.model_validate(r) for r in result.scalars().all()]
 
-    async def get_by_id(self, role_id: UUID) -> RoleModel:
-        return await self._get_with_relations(role_id)
+    async def get_by_id(self, role_id: UUID) -> RoleRead:
+        role = await self._get_role_orm(role_id)
+        return RoleRead.model_validate(role)
 
-    async def update(self, role_id: UUID, data: RoleUpdate) -> RoleModel:
-        role = await self._get_with_relations(role_id)
+    async def update(self, role_id: UUID, data: RoleUpdate) -> RoleRead:
+        role = await self._get_role_orm(role_id)
 
         if data.name and data.name != role.name:
             existing = await self.session.execute(
@@ -71,9 +74,9 @@ class RoleService:
             setattr(role, field, value)
 
         logger.info(f"Role updated with id={role_id}")
-        return role
+        return RoleRead.model_validate(role)
 
     async def delete(self, role_id: UUID) -> None:
-        role = await self._get_with_relations(role_id)
+        role = await self._get_role_orm(role_id)
         await self.session.delete(role)
         logger.info(f"Role deleted with id={role_id}")

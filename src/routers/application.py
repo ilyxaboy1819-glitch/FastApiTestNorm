@@ -5,7 +5,6 @@ from http import HTTPStatus
 
 from src.dependencies import get_application_service
 from src.schemas.application import ApplicationCreate, ApplicationRead, ApplicationUpdate
-from src.schemas.comment import CommentCreate, CommentRead
 from src.services.application import ApplicationService
 
 router = APIRouter(prefix="/api/v1", tags=["Applications"])
@@ -19,7 +18,7 @@ async def create_application(
     return await service.create(data)
 
 
-@router.get("/applications/", response_model=List[ApplicationRead], status_code=HTTPStatus.OK)
+@router.get("/applications/", response_model=List[ApplicationRead])
 async def get_applications(
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=100),
@@ -28,7 +27,7 @@ async def get_applications(
     return await service.get_all(skip=skip, limit=limit)
 
 
-@router.get("/applications/{app_id}", response_model=ApplicationRead, status_code=HTTPStatus.OK)
+@router.get("/applications/{app_id}", response_model=ApplicationRead)
 async def get_application(
     app_id: UUID,
     service: ApplicationService = Depends(get_application_service),
@@ -36,7 +35,7 @@ async def get_application(
     return await service.get_by_id(app_id)
 
 
-@router.put("/applications/{app_id}", response_model=ApplicationRead, status_code=HTTPStatus.OK)
+@router.put("/applications/{app_id}", response_model=ApplicationRead)
 async def update_application(
     app_id: UUID,
     data: ApplicationUpdate,
@@ -51,12 +50,3 @@ async def delete_application(
     service: ApplicationService = Depends(get_application_service),
 ) -> None:
     await service.delete(app_id)
-
-
-@router.post("/applications/{app_id}/comments/", response_model=CommentRead, status_code=HTTPStatus.CREATED)
-async def create_comment(
-    app_id: UUID,
-    data: CommentCreate,
-    service: ApplicationService = Depends(get_application_service),
-) -> CommentRead:
-    return await service.create_comment(app_id, data)

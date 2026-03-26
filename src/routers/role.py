@@ -18,7 +18,7 @@ async def create_role(
     return await service.create(data)
 
 
-@router.get("/", response_model=List[RoleRead], status_code=HTTPStatus.OK)
+@router.get("/", response_model=List[RoleRead])
 async def get_roles(
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=100),
@@ -27,7 +27,7 @@ async def get_roles(
     return await service.get_all(skip=skip, limit=limit)
 
 
-@router.get("/{role_id}", response_model=RoleRead, status_code=HTTPStatus.OK)
+@router.get("/{role_id}", response_model=RoleRead)
 async def get_role(
     role_id: UUID,
     service: RoleService = Depends(get_role_service),
@@ -35,7 +35,7 @@ async def get_role(
     return await service.get_by_id(role_id)
 
 
-@router.put("/{role_id}", response_model=RoleRead, status_code=HTTPStatus.OK)
+@router.put("/{role_id}", response_model=RoleRead)
 async def update_role(
     role_id: UUID,
     data: RoleUpdate,

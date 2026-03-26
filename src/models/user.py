@@ -1,7 +1,7 @@
 import sqlalchemy as sa
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from typing import List, Optional
-from src.models.base import Base, TimestampMixin
+from src.models.base import Base
 
 
 user_roles = sa.Table(
@@ -12,7 +12,7 @@ user_roles = sa.Table(
 )
 
 
-class UserModel(Base, TimestampMixin):
+class UserModel(Base):
     __tablename__ = 'users'
 
     username: Mapped[str] = mapped_column(sa.String(), nullable=False)

@@ -36,7 +36,7 @@ class ApplicationCreate(ApplicationBase):
 class ApplicationUpdate(BaseModel):
     title: str
     description: Optional[str] = None
-    categories: Optional[List[CategoryInput]] = None
+    categories: List[CategoryInput]
 
     @field_validator('title')
     @classmethod

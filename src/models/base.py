@@ -5,7 +5,7 @@ from typing import Optional
 from datetime import datetime
 
 
-class TimestampMixin:
+class Base(DeclarativeBase):
     id: Mapped[UUID] = mapped_column(
         sa.UUID(as_uuid=True),
         primary_key=True,
@@ -24,7 +24,3 @@ class TimestampMixin:
         sa.Boolean,
         server_default=sa.text("false")
     )
-
-
-class Base(DeclarativeBase):
-    pass

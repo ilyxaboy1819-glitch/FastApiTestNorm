@@ -1,10 +1,10 @@
 import sqlalchemy as sa
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from uuid import UUID
-from src.models.base import Base, TimestampMixin
+from src.models.base import Base
 
 
-class CommentModel(Base, TimestampMixin):
+class CommentModel(Base):
     __tablename__ = 'comments'
 
     text: Mapped[str] = mapped_column(sa.Text, nullable=False)

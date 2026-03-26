@@ -2,7 +2,7 @@ import sqlalchemy as sa
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from uuid import UUID
 from typing import List, Optional
-from src.models.base import Base, TimestampMixin
+from src.models.base import Base
 
 
 application_category = sa.Table(
@@ -21,7 +21,7 @@ application_category = sa.Table(
 )
 
 
-class ApplicationModel(Base, TimestampMixin):
+class ApplicationModel(Base):
     __tablename__ = 'applications'
 
     title: Mapped[str] = mapped_column(sa.String(200), nullable=False)

@@ -76,8 +76,7 @@ def upgrade() -> None:
         sa.Column('is_deleted', sa.Boolean(), server_default=sa.text('false'), nullable=False),
         sa.Column('user_id', sa.UUID(), nullable=False),
         sa.ForeignKeyConstraint(['user_id'], ['users.id'], ondelete='CASCADE'),
-        sa.PrimaryKeyConstraint('id'),
-        sa.UniqueConstraint('user_id')
+        sa.PrimaryKeyConstraint('id')
     )
     op.create_table(
         'user_roles',
