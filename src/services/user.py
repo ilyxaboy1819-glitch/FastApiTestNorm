@@ -62,7 +62,7 @@ class UserService:
             )
             .offset(skip)
             .limit(limit)
-            .with_for_update()
+            .with_for_update(skip_locked=True)
         )
         return [UserRead.model_validate(u) for u in result.scalars().all()]
 
@@ -110,7 +110,7 @@ class UserService:
             .options(selectinload(ProfileModel.user))
             .offset(skip)
             .limit(limit)
-            .with_for_update()
+            .with_for_update(skip_locked=True)
         )
         return [ProfileRead.model_validate(p) for p in result.scalars().all()]
 

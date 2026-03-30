@@ -49,7 +49,6 @@ class ApplicationService:
 
         app = ApplicationModel(**data.model_dump(exclude={"categories"}))
         app.categories = categories
-        app.comments = []
         self.session.add(app)
 
         logger.info(f"Application created with id={app.id}")
@@ -65,7 +64,7 @@ class ApplicationService:
             )
             .offset(skip)
             .limit(limit)
-            .with_for_update()
+            .with_for_update(skip_locked=True)
         )
         return [ApplicationRead.model_validate(app) for app in result.scalars().all()]
 
