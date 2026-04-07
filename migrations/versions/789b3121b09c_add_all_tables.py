@@ -62,7 +62,9 @@ def upgrade() -> None:
         sa.Column('updated_at', sa.DateTime(), nullable=True),
         sa.Column('is_deleted', sa.Boolean(), server_default=sa.text('false'), nullable=False),
         sa.Column('user_id', sa.UUID(), nullable=False),
+        sa.Column('category_id', sa.UUID(), nullable=False),
         sa.ForeignKeyConstraint(['user_id'], ['users.id'], ondelete='CASCADE'),
+        sa.ForeignKeyConstraint(['category_id'], ['categories.id'], ondelete='CASCADE'),
         sa.PrimaryKeyConstraint('id')
     )
     op.create_table(
@@ -87,14 +89,6 @@ def upgrade() -> None:
         sa.PrimaryKeyConstraint('user_id', 'role_id')
     )
     op.create_table(
-        'application_category',
-        sa.Column('application_id', sa.UUID(), nullable=False),
-        sa.Column('category_id', sa.UUID(), nullable=False),
-        sa.ForeignKeyConstraint(['application_id'], ['applications.id'], ondelete='CASCADE'),
-        sa.ForeignKeyConstraint(['category_id'], ['categories.id'], ondelete='CASCADE'),
-        sa.PrimaryKeyConstraint('application_id', 'category_id')
-    )
-    op.create_table(
         'comments',
         sa.Column('id', sa.UUID(), nullable=False),
         sa.Column('text', sa.Text(), nullable=False),
@@ -109,7 +103,6 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     op.drop_table('comments')
-    op.drop_table('application_category')
     op.drop_table('user_roles')
     op.drop_table('profiles')
     op.drop_table('applications')

@@ -24,7 +24,7 @@ class ApplicationService:
         result = await self.session.execute(
             sa.select(ApplicationModel)
             .options(
-                selectinload(ApplicationModel.categories),
+                selectinload(ApplicationModel.category),
                 selectinload(ApplicationModel.comments),
             )
             .where(ApplicationModel.id == app_id)
@@ -41,14 +41,13 @@ class ApplicationService:
             logger.warning(f"User with id={data.user_id} not found")
             raise ValidationException(field="user_id", message=f"User {data.user_id} does not exist")
 
-        category_ids = [cat.id for cat in data.categories]
-        result = await self.session.execute(
-            sa.select(CategoryModel).where(CategoryModel.id.in_(category_ids))
-        )
-        categories = list(result.scalars().all())
+        category = await self.session.get(CategoryModel, data.category_id)
+        if not category:
+            logger.warning(f"Category with id={data.category_id} not found")
+            raise ValidationException(field="category_id", message=f"Category {data.category_id} does not exist")
 
-        app = ApplicationModel(**data.model_dump(exclude={"categories"}))
-        app.categories = categories
+        app = ApplicationModel(**data.model_dump())
+        app.category = category
         self.session.add(app)
 
         logger.info(f"Application created with id={app.id}")
@@ -59,7 +58,7 @@ class ApplicationService:
         result = await self.session.execute(
             sa.select(ApplicationModel)
             .options(
-                selectinload(ApplicationModel.categories),
+                selectinload(ApplicationModel.category),
                 selectinload(ApplicationModel.comments),
             )
             .offset(skip)
@@ -75,15 +74,14 @@ class ApplicationService:
     async def update(self, app_id: UUID, data: ApplicationUpdate) -> ApplicationRead:
         app = await self._get_app_orm(app_id)
 
-        for field, value in data.model_dump(exclude_unset=True, exclude={"categories"}).items():
-            setattr(app, field, value)
+        category = await self.session.get(CategoryModel, data.category_id)
+        if not category:
+            logger.warning(f"Category with id={data.category_id} not found")
+            raise ValidationException(field="category_id", message=f"Category {data.category_id} does not exist")
 
-        category_ids = [cat.id for cat in data.categories]
-        result = await self.session.execute(
-            sa.select(CategoryModel).where(CategoryModel.id.in_(category_ids))
-        )
-        categories = list(result.scalars().all())
-        app.categories = categories
+        app.category = category
+        for field, value in data.model_dump(exclude_unset=True).items():
+            setattr(app, field, value)
 
         logger.info(f"Application updated with id={app_id}")
         return ApplicationRead.model_validate(app)

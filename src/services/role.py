@@ -51,7 +51,7 @@ class RoleService:
             .options(selectinload(RoleModel.users))
             .offset(skip)
             .limit(limit)
-            .with_for_update()
+            .with_for_update(skip_locked=True)
         )
         return [RoleRead.model_validate(r) for r in result.scalars().all()]
 
@@ -62,7 +62,7 @@ class RoleService:
     async def update(self, role_id: UUID, data: RoleUpdate) -> RoleRead:
         role = await self._get_role_orm(role_id)
 
-        if data.name and data.name != role.name:
+        if data.name != role.name:
             existing = await self.session.execute(
                 sa.select(RoleModel).where(RoleModel.name == data.name)
             )

@@ -5,10 +5,6 @@ from pydantic import BaseModel, field_validator
 from src.exceptions import ValidationException
 
 
-class CategoryInput(BaseModel):
-    id: UUID
-
-
 class ApplicationBase(BaseModel):
     title: str
     description: Optional[str] = None
@@ -23,20 +19,13 @@ class ApplicationBase(BaseModel):
 
 class ApplicationCreate(ApplicationBase):
     user_id: UUID
-    categories: List[CategoryInput]
-
-    @field_validator('categories')
-    @classmethod
-    def categories_must_not_be_empty(cls, v: List[CategoryInput]) -> List[CategoryInput]:
-        if not v:
-            raise ValidationException(field="categories", message="At least one category is required")
-        return v
+    category_id: UUID
 
 
 class ApplicationUpdate(BaseModel):
     title: str
     description: Optional[str] = None
-    categories: List[CategoryInput]
+    category_id: UUID
 
     @field_validator('title')
     @classmethod
@@ -65,7 +54,7 @@ class CommentShort(BaseModel):
 class ApplicationRead(ApplicationBase):
     id: UUID
     user_id: UUID
-    categories: List[CategoryShort] = []
+    category: CategoryShort
     comments: List[CommentShort] = []
 
     class Config:

@@ -5,22 +5,6 @@ from typing import List, Optional
 from src.models.base import Base
 
 
-application_category = sa.Table(
-    'application_category',
-    Base.metadata,
-    sa.Column(
-        'application_id',
-        sa.ForeignKey('applications.id', ondelete="CASCADE"),
-        primary_key=True
-    ),
-    sa.Column(
-        'category_id',
-        sa.ForeignKey('categories.id', ondelete="CASCADE"),
-        primary_key=True
-    )
-)
-
-
 class ApplicationModel(Base):
     __tablename__ = 'applications'
 
@@ -32,14 +16,18 @@ class ApplicationModel(Base):
         nullable=False
     )
 
+    category_id: Mapped[UUID] = mapped_column(
+        sa.ForeignKey('categories.id', ondelete="CASCADE"),
+        nullable=False
+    )
+
     user: Mapped["UserModel"] = relationship(
         "UserModel",
         back_populates="applications",
     )
 
-    categories: Mapped[List["CategoryModel"]] = relationship(
+    category: Mapped["CategoryModel"] = relationship(
         "CategoryModel",
-        secondary=application_category,
         back_populates="applications",
     )
 
