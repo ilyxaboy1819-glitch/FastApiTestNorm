@@ -17,7 +17,6 @@ class CommentBase(BaseModel):
 
 class CommentRead(CommentBase):
     id: UUID
-    application_id: UUID
 
     class Config:
         from_attributes = True

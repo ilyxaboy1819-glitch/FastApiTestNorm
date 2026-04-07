@@ -24,6 +24,7 @@ class ApplicationService:
         result = await self.session.execute(
             sa.select(ApplicationModel)
             .options(
+                selectinload(ApplicationModel.user),
                 selectinload(ApplicationModel.category),
                 selectinload(ApplicationModel.comments),
             )
@@ -47,6 +48,7 @@ class ApplicationService:
             raise ValidationException(field="category_id", message=f"Category {data.category_id} does not exist")
 
         app = ApplicationModel(**data.model_dump())
+        app.user = user
         app.category = category
         self.session.add(app)
 
@@ -58,6 +60,7 @@ class ApplicationService:
         result = await self.session.execute(
             sa.select(ApplicationModel)
             .options(
+                selectinload(ApplicationModel.user),
                 selectinload(ApplicationModel.category),
                 selectinload(ApplicationModel.comments),
             )
