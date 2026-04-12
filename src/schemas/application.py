@@ -35,22 +35,6 @@ class ApplicationUpdate(BaseModel):
         return v.strip()
 
 
-class UserShort(BaseModel):
-    id: UUID
-    username: str
-
-    class Config:
-        from_attributes = True
-
-
-class CategoryShort(BaseModel):
-    id: UUID
-    name: str
-
-    class Config:
-        from_attributes = True
-
-
 class CommentShort(BaseModel):
     id: UUID
     text: str
@@ -61,8 +45,6 @@ class CommentShort(BaseModel):
 
 class ApplicationRead(ApplicationBase):
     id: UUID
-    user: UserShort
-    category: CategoryShort
     comments: List[CommentShort] = []
 
     class Config:

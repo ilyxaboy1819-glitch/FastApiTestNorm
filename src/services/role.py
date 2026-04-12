@@ -62,13 +62,12 @@ class RoleService:
     async def update(self, role_id: UUID, data: RoleUpdate) -> RoleRead:
         role = await self._get_role_orm(role_id)
 
-        if data.name != role.name:
-            existing = await self.session.execute(
-                sa.select(RoleModel).where(RoleModel.name == data.name)
-            )
-            if existing.scalar_one_or_none():
-                logger.warning(f"Role with name='{data.name}' already exists")
-                raise AlreadyExistsException("Role with this name already exists")
+        existing = await self.session.execute(
+            sa.select(RoleModel).where(RoleModel.name == data.name)
+        )
+        if existing.scalar_one_or_none():
+            logger.warning(f"Role with name='{data.name}' already exists")
+            raise AlreadyExistsException("Role with this name already exists")
 
         for field, value in data.model_dump(exclude_unset=True).items():
             setattr(role, field, value)
