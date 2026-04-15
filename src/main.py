@@ -1,9 +1,8 @@
 from fastapi import FastAPI
-from fastapi.exceptions import RequestValidationError
 from starlette.middleware.cors import CORSMiddleware
 
 from src.exceptions import ValidationException
-from src.exceptions.handler import validation_exception_handler, request_validation_exception_handler
+from src.exceptions.handler import validation_exception_handler
 from src.healthcheck.router import router as healthcheck_router
 from src.routers.user import router as user_router
 from src.routers.application import router as application_router
@@ -27,7 +26,6 @@ def get_app() -> FastAPI:
     )
 
     app.add_exception_handler(ValidationException, validation_exception_handler)
-    app.add_exception_handler(RequestValidationError, request_validation_exception_handler)
 
     app.include_router(healthcheck_router)
     app.include_router(user_router)
