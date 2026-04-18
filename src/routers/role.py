@@ -5,9 +5,11 @@ from http import HTTPStatus
 
 from src.dependencies import get_role_service
 from src.schemas.role import RoleCreate, RoleRead, RoleUpdate
+from src.schemas.category import CategoryBase, CategoryRead, CategoryUpdate
 from src.services.role import RoleService
 
 router = APIRouter(prefix="/api/v1/roles", tags=["Roles"])
+category_router = APIRouter(prefix="/api/v1/categories", tags=["Categories"])
 
 
 @router.post("/", response_model=RoleRead, status_code=HTTPStatus.CREATED)
@@ -50,3 +52,45 @@ async def delete_role(
     service: RoleService = Depends(get_role_service),
 ) -> None:
     await service.delete(role_id)
+
+
+@category_router.post("/", response_model=CategoryRead, status_code=HTTPStatus.CREATED)
+async def create_category(
+    data: CategoryBase,
+    service: RoleService = Depends(get_role_service),
+) -> CategoryRead:
+    return await service.create_category(data)
+
+
+@category_router.get("/", response_model=List[CategoryRead])
+async def get_categories(
+    skip: int = Query(0, ge=0),
+    limit: int = Query(100, ge=1, le=100),
+    service: RoleService = Depends(get_role_service),
+) -> List[CategoryRead]:
+    return await service.get_all_categories(skip=skip, limit=limit)
+
+
+@category_router.get("/{category_id}", response_model=CategoryRead)
+async def get_category(
+    category_id: UUID,
+    service: RoleService = Depends(get_role_service),
+) -> CategoryRead:
+    return await service.get_category_by_id(category_id)
+
+
+@category_router.put("/{category_id}", response_model=CategoryRead)
+async def update_category(
+    category_id: UUID,
+    data: CategoryUpdate,
+    service: RoleService = Depends(get_role_service),
+) -> CategoryRead:
+    return await service.update_category(category_id, data)
+
+
+@category_router.delete("/{category_id}", status_code=HTTPStatus.NO_CONTENT)
+async def delete_category(
+    category_id: UUID,
+    service: RoleService = Depends(get_role_service),
+) -> None:
+    await service.delete_category(category_id)

@@ -3,6 +3,7 @@ from typing import Optional, List
 from pydantic import BaseModel, field_validator
 
 from src.exceptions import ValidationException
+from src.schemas.comment import CommentBase
 
 
 class ApplicationBase(BaseModel):
@@ -20,6 +21,7 @@ class ApplicationBase(BaseModel):
 class ApplicationCreate(ApplicationBase):
     user_id: UUID
     category_id: UUID
+    comments: List[CommentBase] = []
 
 
 class ApplicationUpdate(BaseModel):

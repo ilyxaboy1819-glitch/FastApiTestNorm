@@ -3,6 +3,7 @@ from uuid import UUID
 from typing import Optional, List
 
 from src.exceptions import ValidationException
+from src.schemas.profile import ProfileBase
 
 
 class RoleShort(BaseModel):
@@ -25,6 +26,7 @@ class UserCreate(BaseModel):
     username: str
     email: EmailStr
     full_name: Optional[str] = None
+    profile: Optional[ProfileBase] = None
 
     @field_validator('username')
     @classmethod
@@ -38,6 +40,7 @@ class UserUpdate(BaseModel):
     username: str
     email: EmailStr
     full_name: Optional[str] = None
+    profile: Optional[ProfileBase] = None
 
     @field_validator('username')
     @classmethod

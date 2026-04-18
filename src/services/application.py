@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from src.models.application import ApplicationModel
+from src.models.comment import CommentModel
 from src.schemas.application import ApplicationCreate, ApplicationUpdate, ApplicationRead
 from src.exceptions import NotFoundException
 
@@ -31,10 +32,16 @@ class ApplicationService:
         return app
 
     async def create(self, data: ApplicationCreate) -> ApplicationRead:
-        app = ApplicationModel(**data.model_dump())
+        app = ApplicationModel(**data.model_dump(exclude={"comments"}))
         self.session.add(app)
+        await self.session.flush()
+
+        for comment_data in data.comments:
+            comment = CommentModel(**comment_data.model_dump(), application_id=app.id)
+            self.session.add(comment)
+
         logger.info(f"Application created with id={app.id}")
-        return ApplicationRead.model_validate(app)
+        return await self._get_app_orm(app.id)
 
     async def get_all(self, skip: int = 0, limit: int = 100) -> List[ApplicationRead]:
         logger.info(f"Getting applications skip={skip} limit={limit}")
