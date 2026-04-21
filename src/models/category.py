@@ -13,4 +13,5 @@ class CategoryModel(Base):
     applications: Mapped[List["ApplicationModel"]] = relationship(
         "ApplicationModel",
         back_populates="category",
+        primaryjoin="and_(CategoryModel.id == ApplicationModel.category_id, ApplicationModel.is_deleted == False)",
     )

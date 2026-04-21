@@ -1,7 +1,7 @@
 import re
 from uuid import UUID
 from typing import Optional
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, field_validator, FieldValidationInfo
 
 from src.exceptions import ValidationException
 
@@ -12,6 +12,13 @@ class ProfileBase(BaseModel):
     bio: Optional[str] = None
     avatar_url: Optional[str] = None
     phone: Optional[str] = None
+
+    @field_validator('bio', 'avatar_url')
+    @classmethod
+    def optional_str_must_not_be_whitespace(cls, v: Optional[str], info: FieldValidationInfo) -> Optional[str]:
+        if v is not None and not v.strip():
+            raise ValidationException(field=info.field_name, message=f"{info.field_name} must not be empty if provided")
+        return v.strip() if v else v
 
     @field_validator('phone')
     @classmethod

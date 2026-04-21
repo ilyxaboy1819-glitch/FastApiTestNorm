@@ -17,11 +17,25 @@ class ApplicationBase(BaseModel):
             raise ValidationException(field="title", message="Title must not be empty")
         return v.strip()
 
+    @field_validator('description')
+    @classmethod
+    def description_must_not_be_whitespace(cls, v: Optional[str]) -> Optional[str]:
+        if v is not None and not v.strip():
+            raise ValidationException(field="description", message="Description must not be empty if provided")
+        return v.strip() if v else v
+
 
 class ApplicationCreate(ApplicationBase):
     user_id: UUID
     category_id: UUID
-    comments: List[CommentBase] = Field(min_length=1)
+    comments: List[CommentBase] = Field(default=[])
+
+    @field_validator('comments')
+    @classmethod
+    def comments_must_not_be_empty(cls, v: List[CommentBase]) -> List[CommentBase]:
+        if not v:
+            raise ValidationException(field="comments", message="Comments must not be empty")
+        return v
 
 
 class ApplicationUpdate(BaseModel):
@@ -35,6 +49,13 @@ class ApplicationUpdate(BaseModel):
         if not v.strip():
             raise ValidationException(field="title", message="Title must not be empty")
         return v.strip()
+
+    @field_validator('description')
+    @classmethod
+    def description_must_not_be_whitespace(cls, v: Optional[str]) -> Optional[str]:
+        if v is not None and not v.strip():
+            raise ValidationException(field="description", message="Description must not be empty if provided")
+        return v.strip() if v else v
 
 
 class CommentShort(BaseModel):

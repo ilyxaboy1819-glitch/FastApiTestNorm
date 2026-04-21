@@ -1,8 +1,14 @@
+from __future__ import annotations
+from typing import TYPE_CHECKING
+
 import sqlalchemy as sa
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from uuid import UUID
 from typing import List, Optional
 from src.models.base import Base
+
+if TYPE_CHECKING:
+    from src.schemas.application import ApplicationCreate
 
 
 class ApplicationModel(Base):
@@ -36,3 +42,7 @@ class ApplicationModel(Base):
         back_populates="application",
         cascade="all, delete-orphan",
     )
+
+    @classmethod
+    def from_schema(cls, data: ApplicationCreate) -> ApplicationModel:
+        return cls(**data.model_dump(exclude={"comments"}))

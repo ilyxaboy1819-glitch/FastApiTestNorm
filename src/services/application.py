@@ -23,7 +23,7 @@ class ApplicationService:
         result = await self.session.execute(
             sa.select(ApplicationModel)
             .options(selectinload(ApplicationModel.comments))
-            .where(ApplicationModel.id == app_id)
+            .where(ApplicationModel.id == app_id, ApplicationModel.is_deleted == False)
         )
         app = result.scalar_one_or_none()
         if not app:
@@ -32,14 +32,11 @@ class ApplicationService:
         return app
 
     async def create(self, data: ApplicationCreate) -> ApplicationRead:
-        app = ApplicationModel(**data.model_dump(exclude={"comments"}))
+        app = ApplicationModel.from_schema(data)
         self.session.add(app)
         await self.session.flush()
 
-        comments = [
-            CommentModel(**c.model_dump(), application_id=app.id)
-            for c in data.comments
-        ]
+        comments = [CommentModel.from_schema(c, app.id) for c in data.comments]
         self.session.add_all(comments)
 
         logger.info(f"Application created with id={app.id}")
@@ -56,6 +53,7 @@ class ApplicationService:
         result = await self.session.execute(
             sa.select(ApplicationModel)
             .options(selectinload(ApplicationModel.comments))
+            .where(ApplicationModel.is_deleted == False)
             .offset(skip)
             .limit(limit)
             .with_for_update(skip_locked=True)
@@ -77,5 +75,5 @@ class ApplicationService:
 
     async def delete(self, app_id: UUID) -> None:
         app = await self._get_app_orm(app_id)
-        await self.session.delete(app)
-        logger.info(f"Application deleted with id={app_id}")
+        app.is_deleted = True
+        logger.info(f"Application soft deleted with id={app_id}")

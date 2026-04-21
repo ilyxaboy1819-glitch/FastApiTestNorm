@@ -16,6 +16,13 @@ class RoleBase(BaseModel):
             raise ValidationException(field="name", message="Name must not be empty")
         return v.strip()
 
+    @field_validator('description')
+    @classmethod
+    def description_must_not_be_whitespace(cls, v: Optional[str]) -> Optional[str]:
+        if v is not None and not v.strip():
+            raise ValidationException(field="description", message="Description must not be empty if provided")
+        return v.strip() if v else v
+
 
 class RoleCreate(RoleBase):
     pass
@@ -31,6 +38,13 @@ class RoleUpdate(BaseModel):
         if not v.strip():
             raise ValidationException(field="name", message="Name must not be empty")
         return v.strip()
+
+    @field_validator('description')
+    @classmethod
+    def description_must_not_be_whitespace(cls, v: Optional[str]) -> Optional[str]:
+        if v is not None and not v.strip():
+            raise ValidationException(field="description", message="Description must not be empty if provided")
+        return v.strip() if v else v
 
 
 class UserShort(BaseModel):

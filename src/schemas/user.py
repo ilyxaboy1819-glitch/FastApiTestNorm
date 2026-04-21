@@ -42,6 +42,13 @@ class UserCreate(BaseModel):
             raise ValidationException(field="email", message="Email must not be empty")
         return v.strip()
 
+    @field_validator('full_name')
+    @classmethod
+    def full_name_must_not_be_whitespace(cls, v: Optional[str]) -> Optional[str]:
+        if v is not None and not v.strip():
+            raise ValidationException(field="full_name", message="Full name must not be empty if provided")
+        return v.strip() if v else v
+
 
 class UserUpdate(BaseModel):
     username: str
@@ -62,6 +69,13 @@ class UserUpdate(BaseModel):
         if not v.strip():
             raise ValidationException(field="email", message="Email must not be empty")
         return v.strip()
+
+    @field_validator('full_name')
+    @classmethod
+    def full_name_must_not_be_whitespace(cls, v: Optional[str]) -> Optional[str]:
+        if v is not None and not v.strip():
+            raise ValidationException(field="full_name", message="Full name must not be empty if provided")
+        return v.strip() if v else v
 
 
 class UserRead(BaseModel):

@@ -83,12 +83,10 @@ class UserService:
     async def update(self, user_id: UUID, data: UserUpdate) -> UserRead:
         user = await self._get_user_orm(user_id)
 
-        for field, value in data.model_dump(exclude_unset=True, exclude={"profile"}).items():
-            setattr(user, field, value)
+        self._update_fields(user, data.model_dump(exclude_unset=True, exclude={"profile"}))
 
         if data.profile is not None:
-            for field, value in data.profile.model_dump(exclude_unset=True).items():
-                setattr(user.profile, field, value)
+            self._update_fields(user.profile, data.profile.model_dump(exclude_unset=True))
 
         logger.info(f"User updated with id={user_id}")
         return UserRead.model_validate(user)
@@ -97,3 +95,8 @@ class UserService:
         user = await self._get_user_orm(user_id)
         await self.session.delete(user)
         logger.info(f"User deleted with id={user_id}")
+
+    @staticmethod
+    def _update_fields(obj, fields: dict) -> None:
+        for field, value in fields.items():
+            setattr(obj, field, value)
