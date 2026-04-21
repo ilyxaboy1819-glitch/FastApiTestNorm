@@ -10,6 +10,18 @@ from src.routers.application import router as application_router
 from src.routers.role import router as role_router, category_router
 
 
+def _setup_exception_handlers(app: FastAPI) -> None:
+    app.add_exception_handler(ValidationException, validation_exception_handler)
+
+
+def _setup_routers(app: FastAPI) -> None:
+    app.include_router(healthcheck_router)
+    app.include_router(user_router)
+    app.include_router(application_router)
+    app.include_router(role_router)
+    app.include_router(category_router)
+
+
 def get_app() -> FastAPI:
     app = FastAPI(
         docs_url="/docs",
@@ -25,13 +37,8 @@ def get_app() -> FastAPI:
         allow_headers=["*"],
     )
 
-    app.add_exception_handler(ValidationException, validation_exception_handler)
-
-    app.include_router(healthcheck_router)
-    app.include_router(user_router)
-    app.include_router(application_router)
-    app.include_router(role_router)
-    app.include_router(category_router)
+    _setup_exception_handlers(app)
+    _setup_routers(app)
 
     return app
 
