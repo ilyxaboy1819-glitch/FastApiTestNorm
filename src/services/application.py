@@ -36,12 +36,20 @@ class ApplicationService:
         self.session.add(app)
         await self.session.flush()
 
-        for comment_data in data.comments:
-            comment = CommentModel(**comment_data.model_dump(), application_id=app.id)
-            self.session.add(comment)
+        comments = [
+            CommentModel(**c.model_dump(), application_id=app.id)
+            for c in data.comments
+        ]
+        self.session.add_all(comments)
 
         logger.info(f"Application created with id={app.id}")
-        return await self._get_app_orm(app.id)
+        await self.session.flush()
+        return ApplicationRead.model_validate({
+            "id": app.id,
+            "title": app.title,
+            "description": app.description,
+            "comments": [{"id": c.id, "text": c.text} for c in comments],
+        })
 
     async def get_all(self, skip: int = 0, limit: int = 100) -> List[ApplicationRead]:
         logger.info(f"Getting applications skip={skip} limit={limit}")

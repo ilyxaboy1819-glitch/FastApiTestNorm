@@ -26,13 +26,20 @@ class UserCreate(BaseModel):
     username: str
     email: EmailStr
     full_name: Optional[str] = None
-    profile: Optional[ProfileBase] = None
+    profile: ProfileBase
 
     @field_validator('username')
     @classmethod
     def username_must_not_be_empty(cls, v: str) -> str:
         if not v.strip():
             raise ValidationException(field="username", message="Username must not be empty")
+        return v.strip()
+
+    @field_validator('email')
+    @classmethod
+    def email_must_not_be_empty(cls, v: str) -> str:
+        if not v.strip():
+            raise ValidationException(field="email", message="Email must not be empty")
         return v.strip()
 
 
@@ -47,6 +54,13 @@ class UserUpdate(BaseModel):
     def username_must_not_be_empty(cls, v: str) -> str:
         if not v.strip():
             raise ValidationException(field="username", message="Username must not be empty")
+        return v.strip()
+
+    @field_validator('email')
+    @classmethod
+    def email_must_not_be_empty(cls, v: str) -> str:
+        if not v.strip():
+            raise ValidationException(field="email", message="Email must not be empty")
         return v.strip()
 
 

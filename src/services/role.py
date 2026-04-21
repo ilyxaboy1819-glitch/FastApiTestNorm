@@ -44,7 +44,7 @@ class RoleService:
         self.session.add(role)
         await self.session.flush()
         logger.info(f"Role created with id={role.id}")
-        return await self.get_by_id(role.id)
+        return RoleRead.model_validate({"id": role.id, "name": role.name, "description": role.description, "users": []})
 
     async def get_all(self, skip: int = 0, limit: int = 100) -> List[RoleRead]:
         logger.info(f"Getting roles skip={skip} limit={limit}")
@@ -108,7 +108,7 @@ class RoleService:
         self.session.add(category)
         await self.session.flush()
         logger.info(f"Category created with id={category.id}")
-        return await self.get_category_by_id(category.id)
+        return CategoryRead.model_validate({"id": category.id, "name": category.name, "description": category.description, "applications": []})
 
     async def get_all_categories(self, skip: int = 0, limit: int = 100) -> List[CategoryRead]:
         logger.info(f"Getting categories skip={skip} limit={limit}")

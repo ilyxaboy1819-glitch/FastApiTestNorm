@@ -48,12 +48,19 @@ class UserService:
         self.session.add(user)
         await self.session.flush()
 
-        if data.profile:
-            profile = ProfileModel(**data.profile.model_dump(), user_id=user.id)
-            self.session.add(profile)
+        profile = ProfileModel(**data.profile.model_dump(), user_id=user.id)
+        self.session.add(profile)
 
+        await self.session.flush()
         logger.info(f"User created with id={user.id}")
-        return await self.get_by_id(user.id)
+        return UserRead.model_validate({
+            "id": user.id,
+            "username": user.username,
+            "email": user.email,
+            "full_name": user.full_name,
+            "profile": {"id": profile.id, "bio": profile.bio},
+            "roles": [],
+        })
 
     async def get_all(self, skip: int = 0, limit: int = 100) -> List[UserRead]:
         logger.info(f"Getting users skip={skip} limit={limit}")
@@ -80,12 +87,8 @@ class UserService:
             setattr(user, field, value)
 
         if data.profile is not None:
-            if user.profile:
-                for field, value in data.profile.model_dump(exclude_unset=True).items():
-                    setattr(user.profile, field, value)
-            else:
-                profile = ProfileModel(**data.profile.model_dump(), user_id=user_id)
-                self.session.add(profile)
+            for field, value in data.profile.model_dump(exclude_unset=True).items():
+                setattr(user.profile, field, value)
 
         logger.info(f"User updated with id={user_id}")
         return UserRead.model_validate(user)

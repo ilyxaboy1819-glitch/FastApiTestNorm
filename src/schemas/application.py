@@ -1,6 +1,6 @@
 from uuid import UUID
 from typing import Optional, List
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, field_validator, Field
 
 from src.exceptions import ValidationException
 from src.schemas.comment import CommentBase
@@ -21,7 +21,7 @@ class ApplicationBase(BaseModel):
 class ApplicationCreate(ApplicationBase):
     user_id: UUID
     category_id: UUID
-    comments: List[CommentBase] = []
+    comments: List[CommentBase] = Field(min_length=1)
 
 
 class ApplicationUpdate(BaseModel):
