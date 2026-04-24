@@ -41,12 +41,8 @@ class ApplicationService:
 
         logger.info(f"Application created with id={app.id}")
         await self.session.flush()
-        return ApplicationRead.model_validate({
-            "id": app.id,
-            "title": app.title,
-            "description": app.description,
-            "comments": [{"id": c.id, "text": c.text} for c in comments],
-        })
+        await self.session.refresh(app, ["comments"])
+        return ApplicationRead.model_validate(app)
 
     async def get_all(self, skip: int = 0, limit: int = 100) -> List[ApplicationRead]:
         logger.info(f"Getting applications skip={skip} limit={limit}")
@@ -56,7 +52,6 @@ class ApplicationService:
             .where(ApplicationModel.is_deleted == False)
             .offset(skip)
             .limit(limit)
-            .with_for_update(skip_locked=True)
         )
         return [ApplicationRead.model_validate(app) for app in result.scalars().all()]
 
@@ -74,6 +69,10 @@ class ApplicationService:
         return await self.get_by_id(app_id)
 
     async def delete(self, app_id: UUID) -> None:
-        app = await self._get_app_orm(app_id)
-        app.is_deleted = True
+        await self._get_app_orm(app_id)
+        await self.session.execute(
+            sa.update(ApplicationModel)
+            .where(ApplicationModel.id == app_id)
+            .values(is_deleted=True)
+        )
         logger.info(f"Application soft deleted with id={app_id}")

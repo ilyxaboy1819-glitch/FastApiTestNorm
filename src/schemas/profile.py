@@ -1,7 +1,7 @@
 import re
 from uuid import UUID
 from typing import Optional
-from pydantic import BaseModel, field_validator, FieldValidationInfo
+from pydantic import AnyHttpUrl, BaseModel, field_validator
 
 from src.exceptions import ValidationException
 
@@ -10,14 +10,14 @@ RF_PHONE_REGEX = re.compile(r'^(\+7|7|8)\d{10}$')
 
 class ProfileBase(BaseModel):
     bio: Optional[str] = None
-    avatar_url: Optional[str] = None
+    avatar_url: Optional[AnyHttpUrl] = None
     phone: Optional[str] = None
 
-    @field_validator('bio', 'avatar_url')
+    @field_validator('bio')
     @classmethod
-    def optional_str_must_not_be_whitespace(cls, v: Optional[str], info: FieldValidationInfo) -> Optional[str]:
+    def bio_must_not_be_whitespace(cls, v: Optional[str]) -> Optional[str]:
         if v is not None and not v.strip():
-            raise ValidationException(field=info.field_name, message=f"{info.field_name} must not be empty if provided")
+            raise ValidationException(field="bio", message="Bio must not be empty if provided")
         return v.strip() if v else v
 
     @field_validator('phone')

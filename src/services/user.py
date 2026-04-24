@@ -53,14 +53,8 @@ class UserService:
 
         await self.session.flush()
         logger.info(f"User created with id={user.id}")
-        return UserRead.model_validate({
-            "id": user.id,
-            "username": user.username,
-            "email": user.email,
-            "full_name": user.full_name,
-            "profile": {"id": profile.id, "bio": profile.bio},
-            "roles": [],
-        })
+        await self.session.refresh(user, ["profile", "roles"])
+        return UserRead.model_validate(user)
 
     async def get_all(self, skip: int = 0, limit: int = 100) -> List[UserRead]:
         logger.info(f"Getting users skip={skip} limit={limit}")
@@ -72,7 +66,6 @@ class UserService:
             )
             .offset(skip)
             .limit(limit)
-            .with_for_update(skip_locked=True)
         )
         return [UserRead.model_validate(u) for u in result.scalars().all()]
 

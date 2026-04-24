@@ -3,17 +3,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.db import get_session
 from src.services.application import ApplicationService
-from src.services.category import CategoryService
 from src.services.role import RoleService
 from src.services.user import UserService
 
 
 def get_application_service(session: AsyncSession = Depends(get_session)) -> ApplicationService:
     return ApplicationService(session)
-
-
-def get_category_service(session: AsyncSession = Depends(get_session)) -> CategoryService:
-    return CategoryService(session)
 
 
 def get_role_service(session: AsyncSession = Depends(get_session)) -> RoleService:
