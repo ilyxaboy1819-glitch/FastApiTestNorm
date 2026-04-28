@@ -3,7 +3,7 @@ from typing import Optional, List
 from pydantic import BaseModel, field_validator
 
 from src.exceptions import ValidationException
-from src.schemas.comment import CommentBase
+from src.schemas.comment import CommentBase, CommentShort
 
 
 class ApplicationBase(BaseModel):
@@ -58,9 +58,9 @@ class ApplicationUpdate(BaseModel):
         return v.strip() if v else v
 
 
-class CommentShort(BaseModel):
+class ApplicationShort(BaseModel):
     id: UUID
-    text: str
+    title: str
 
     class Config:
         from_attributes = True

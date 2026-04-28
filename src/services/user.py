@@ -6,7 +6,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from src.models.user import UserModel
-from src.models.profile import ProfileModel
 from src.schemas.user import UserCreate, UserUpdate, UserRead
 from src.exceptions import NotFoundException, AlreadyExistsException
 
@@ -44,13 +43,8 @@ class UserService:
             logger.warning(f"User with username='{data.username}' or email='{data.email}' already exists")
             raise AlreadyExistsException("Username or email already exists")
 
-        user = UserModel(**data.model_dump(exclude={"profile"}))
+        user = UserModel.from_schema(data)
         self.session.add(user)
-        await self.session.flush()
-
-        profile = ProfileModel(**data.profile.model_dump(), user_id=user.id)
-        self.session.add(profile)
-
         await self.session.flush()
         logger.info(f"User created with id={user.id}")
         await self.session.refresh(user, ["profile", "roles"])

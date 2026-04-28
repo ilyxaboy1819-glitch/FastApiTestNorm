@@ -3,6 +3,7 @@ from typing import Optional, List
 from pydantic import BaseModel, field_validator
 
 from src.exceptions import ValidationException
+from src.schemas.application import ApplicationShort
 
 
 class CategoryBase(BaseModel):
@@ -41,14 +42,6 @@ class CategoryUpdate(BaseModel):
         if v is not None and not v.strip():
             raise ValidationException(field="description", message="Description must not be empty")
         return v.strip() if v else v
-
-
-class ApplicationShort(BaseModel):
-    id: UUID
-    title: str
-
-    class Config:
-        from_attributes = True
 
 
 class CategoryRead(CategoryBase):

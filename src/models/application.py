@@ -45,4 +45,7 @@ class ApplicationModel(Base):
 
     @classmethod
     def from_schema(cls, data: ApplicationCreate) -> ApplicationModel:
-        return cls(**data.model_dump(exclude={"comments"}))
+        from src.models.comment import CommentModel
+        app = cls(**data.model_dump(exclude={"comments"}))
+        app.comments = [CommentModel(text=c.text) for c in data.comments]
+        return app

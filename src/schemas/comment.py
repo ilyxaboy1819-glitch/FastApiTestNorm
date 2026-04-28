@@ -19,6 +19,14 @@ class CommentCreate(CommentBase):
     application_id: UUID
 
 
+class CommentShort(BaseModel):
+    id: UUID
+    text: str
+
+    class Config:
+        from_attributes = True
+
+
 class CommentRead(CommentBase):
     id: UUID
 
