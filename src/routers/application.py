@@ -10,12 +10,14 @@ from src.services.application import ApplicationService
 router = APIRouter(prefix="/api/v1", tags=["Applications"])
 
 
-@router.post("/applications/", response_model=ApplicationRead, status_code=HTTPStatus.CREATED)
+@router.post("/applications/{user_id}/{category_id}", response_model=ApplicationRead, status_code=HTTPStatus.CREATED)
 async def create_application(
+    user_id: UUID,
+    category_id: UUID,
     data: ApplicationCreate,
     service: ApplicationService = Depends(get_application_service),
 ) -> ApplicationRead:
-    return await service.create(data)
+    return await service.create(data, user_id, category_id)
 
 
 @router.get("/applications/", response_model=List[ApplicationRead])
@@ -35,13 +37,14 @@ async def get_application(
     return await service.get_by_id(app_id)
 
 
-@router.put("/applications/{app_id}", response_model=ApplicationRead)
+@router.put("/applications/{app_id}/{category_id}", response_model=ApplicationRead)
 async def update_application(
     app_id: UUID,
+    category_id: UUID,
     data: ApplicationUpdate,
     service: ApplicationService = Depends(get_application_service),
 ) -> ApplicationRead:
-    return await service.update(app_id, data)
+    return await service.update(app_id, data, category_id)
 
 
 @router.delete("/applications/{app_id}", status_code=HTTPStatus.NO_CONTENT)

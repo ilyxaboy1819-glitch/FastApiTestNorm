@@ -43,12 +43,12 @@ class UserService:
             logger.warning(f"User with username='{data.username}' or email='{data.email}' already exists")
             raise AlreadyExistsException("Username or email already exists")
 
-        user = UserModel.from_schema(data)
+        user = data.to_model()
         self.session.add(user)
         await self.session.flush()
         logger.info(f"User created with id={user.id}")
         await self.session.refresh(user, ["profile", "roles"])
-        return UserRead.model_validate(user)
+        return UserRead.from_model(user)
 
     async def get_all(self, skip: int = 0, limit: int = 100) -> List[UserRead]:
         logger.info(f"Getting users skip={skip} limit={limit}")
@@ -61,11 +61,11 @@ class UserService:
             .offset(skip)
             .limit(limit)
         )
-        return [UserRead.model_validate(u) for u in result.scalars().all()]
+        return UserRead.from_list(result.scalars().all())
 
     async def get_by_id(self, user_id: UUID) -> UserRead:
         user = await self._get_user_orm(user_id)
-        return UserRead.model_validate(user)
+        return UserRead.from_model(user)
 
     async def update(self, user_id: UUID, data: UserUpdate) -> UserRead:
         user = await self._get_user_orm(user_id)
@@ -76,7 +76,7 @@ class UserService:
             self._update_fields(user.profile, data.profile.model_dump(exclude_unset=True))
 
         logger.info(f"User updated with id={user_id}")
-        return UserRead.model_validate(user)
+        return UserRead.from_model(user)
 
     async def delete(self, user_id: UUID) -> None:
         user = await self._get_user_orm(user_id)

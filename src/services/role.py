@@ -43,7 +43,7 @@ class RoleService:
         await self.session.flush()
         await self.session.refresh(role, ["users"])
         logger.info(f"Role created with id={role.id}")
-        return RoleRead.model_validate(role)
+        return RoleRead.from_model(role)
 
     async def get_all(self, skip: int = 0, limit: int = 100) -> List[RoleRead]:
         logger.info(f"Getting roles skip={skip} limit={limit}")
@@ -53,11 +53,11 @@ class RoleService:
             .offset(skip)
             .limit(limit)
         )
-        return [RoleRead.model_validate(r) for r in result.scalars().all()]
+        return RoleRead.from_list(result.scalars().all())
 
     async def get_by_id(self, role_id: UUID) -> RoleRead:
         role = await self._get_role_orm(role_id)
-        return RoleRead.model_validate(role)
+        return RoleRead.from_model(role)
 
     async def update(self, role_id: UUID, data: RoleUpdate) -> RoleRead:
         existing = await self.session.execute(
@@ -70,7 +70,7 @@ class RoleService:
         role = await self._get_role_orm(role_id)
         self._update_fields(role, data.model_dump(exclude_unset=True))
         logger.info(f"Role updated with id={role_id}")
-        return RoleRead.model_validate(role)
+        return RoleRead.from_model(role)
 
     async def delete(self, role_id: UUID) -> None:
         role = await self._get_role_orm(role_id)

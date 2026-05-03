@@ -3,6 +3,7 @@ from typing import Optional, List
 from pydantic import BaseModel, field_validator
 
 from src.exceptions import ValidationException
+from src.models.role import RoleModel
 
 
 class RoleBase(BaseModel):
@@ -61,3 +62,11 @@ class RoleRead(RoleBase):
 
     class Config:
         from_attributes = True
+
+    @classmethod
+    def from_model(cls, model: RoleModel) -> "RoleRead":
+        return cls.model_validate(model)
+
+    @classmethod
+    def from_list(cls, models) -> List["RoleRead"]:
+        return [cls.model_validate(m) for m in models]

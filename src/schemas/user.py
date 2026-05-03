@@ -3,6 +3,8 @@ from uuid import UUID
 from typing import Optional, List
 
 from src.exceptions import ValidationException
+from src.models.user import UserModel
+from src.models.profile import ProfileModel
 from src.schemas.profile import ProfileBase
 
 
@@ -49,6 +51,12 @@ class UserCreate(BaseModel):
             raise ValidationException(field="full_name", message="Full name must not be empty if provided")
         return v.strip() if v else v
 
+    def to_model(self) -> UserModel:
+        user = UserModel(**self.model_dump(exclude={"profile"}))
+        if self.profile:
+            user.profile = ProfileModel(**self.profile.model_dump())
+        return user
+
 
 class UserUpdate(BaseModel):
     username: str
@@ -88,3 +96,11 @@ class UserRead(BaseModel):
 
     class Config:
         from_attributes = True
+
+    @classmethod
+    def from_model(cls, model: UserModel) -> "UserRead":
+        return cls.model_validate(model)
+
+    @classmethod
+    def from_list(cls, models) -> List["UserRead"]:
+        return [cls.model_validate(m) for m in models]

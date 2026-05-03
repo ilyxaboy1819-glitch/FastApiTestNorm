@@ -16,7 +16,7 @@ class CommentBase(BaseModel):
 
 
 class CommentCreate(CommentBase):
-    application_id: UUID
+    pass
 
 
 class CommentShort(BaseModel):

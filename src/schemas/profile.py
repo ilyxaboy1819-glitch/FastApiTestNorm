@@ -35,7 +35,7 @@ class ProfileBase(BaseModel):
 
 
 class ProfileCreate(ProfileBase):
-    user_id: UUID
+    pass
 
 
 class UserShort(BaseModel):

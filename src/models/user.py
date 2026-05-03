@@ -29,10 +29,3 @@ class UserModel(Base):
         "RoleModel", secondary=user_roles, back_populates="users"
     )
 
-    @classmethod
-    def from_schema(cls, data) -> "UserModel":
-        from src.models.profile import ProfileModel
-        user = cls(**data.model_dump(exclude={"profile"}))
-        if data.profile:
-            user.profile = ProfileModel(**data.profile.model_dump())
-        return user
