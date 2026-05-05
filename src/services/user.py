@@ -75,6 +75,7 @@ class UserService:
         if data.profile is not None:
             self._update_fields(user.profile, data.profile.model_dump(exclude_unset=True))
 
+        await self.session.flush()
         logger.info(f"User updated with id={user_id}")
         return UserRead.from_model(user)
 

@@ -69,6 +69,7 @@ class RoleService:
 
         role = await self._get_role_orm(role_id)
         self._update_fields(role, data.model_dump(exclude_unset=True))
+        await self.session.flush()
         logger.info(f"Role updated with id={role_id}")
         return RoleRead.from_model(role)
 
