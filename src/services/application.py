@@ -1,72 +1,76 @@
+import json
 import logging
 from uuid import UUID
 from typing import List
 
-import sqlalchemy as sa
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
-
-from src.models.application import ApplicationModel
+from src.repositories.application import ApplicationRepository
 from src.schemas.application import ApplicationCreate, ApplicationUpdate, ApplicationRead
 from src.exceptions import NotFoundException
+from src.cache import get_cached, set_cached, delete_cached, delete_cached_pattern
 
 logger = logging.getLogger(__name__)
+
+CACHE_PREFIX = "application"
 
 
 class ApplicationService:
 
-    def __init__(self, session: AsyncSession):
-        self.session = session
-
-    async def _get_app_orm(self, app_id: UUID) -> ApplicationModel:
-        result = await self.session.execute(
-            sa.select(ApplicationModel)
-            .options(selectinload(ApplicationModel.comments))
-            .where(ApplicationModel.id == app_id, ApplicationModel.is_deleted == False)
-        )
-        app = result.scalar_one_or_none()
-        if not app:
-            logger.warning(f"Application with id={app_id} not found")
-            raise NotFoundException(f"Application with id={app_id} not found")
-        return app
+    def __init__(self, repository: ApplicationRepository):
+        self.repository = repository
 
     async def create(self, data: ApplicationCreate, user_id: UUID, category_id: UUID) -> ApplicationRead:
         app = data.to_model(user_id, category_id)
-        self.session.add(app)
-        await self.session.flush()
+        app = await self.repository.create(app)
         logger.info(f"Application created with id={app.id}")
-        await self.session.refresh(app, ["comments"])
+        await delete_cached_pattern(f"{CACHE_PREFIX}:list:*")
         return ApplicationRead.from_model(app)
 
     async def get_all(self, skip: int = 0, limit: int = 100) -> List[ApplicationRead]:
+        cache_key = f"{CACHE_PREFIX}:list:{skip}:{limit}"
+        cached = await get_cached(cache_key)
+        if cached:
+            return [ApplicationRead.model_validate(a) for a in json.loads(cached)]
+
         logger.info(f"Getting applications skip={skip} limit={limit}")
-        result = await self.session.execute(
-            sa.select(ApplicationModel)
-            .options(selectinload(ApplicationModel.comments))
-            .where(ApplicationModel.is_deleted == False)
-            .offset(skip)
-            .limit(limit)
-        )
-        return ApplicationRead.from_list(result.scalars().all())
+        apps = await self.repository.get_all(skip, limit)
+        result = ApplicationRead.from_list(apps)
+        await set_cached(cache_key, json.dumps([a.model_dump(mode="json") for a in result]))
+        return result
 
     async def get_by_id(self, app_id: UUID) -> ApplicationRead:
-        app = await self._get_app_orm(app_id)
-        return ApplicationRead.from_model(app)
+        cache_key = f"{CACHE_PREFIX}:{app_id}"
+        cached = await get_cached(cache_key)
+        if cached:
+            return ApplicationRead.model_validate(json.loads(cached))
+
+        app = await self.repository.get_by_id(app_id)
+        if not app:
+            logger.warning(f"Application with id={app_id} not found")
+            raise NotFoundException(f"Application with id={app_id} not found")
+        result = ApplicationRead.from_model(app)
+        await set_cached(cache_key, json.dumps(result.model_dump(mode="json")))
+        return result
 
     async def update(self, app_id: UUID, data: ApplicationUpdate, category_id: UUID) -> ApplicationRead:
-        await self.session.execute(
-            sa.update(ApplicationModel)
-            .where(ApplicationModel.id == app_id)
-            .values(**data.model_dump(exclude_unset=True), category_id=category_id)
-        )
+        app = await self.repository.get_by_id(app_id)
+        if not app:
+            logger.warning(f"Application with id={app_id} not found")
+            raise NotFoundException(f"Application with id={app_id} not found")
+
+        fields = data.model_dump(exclude_unset=True)
+        fields["category_id"] = category_id
+        await self.repository.update(app_id, fields)
         logger.info(f"Application updated with id={app_id}")
+        await delete_cached(f"{CACHE_PREFIX}:{app_id}")
+        await delete_cached_pattern(f"{CACHE_PREFIX}:list:*")
         return await self.get_by_id(app_id)
 
     async def delete(self, app_id: UUID) -> None:
-        await self._get_app_orm(app_id)
-        await self.session.execute(
-            sa.update(ApplicationModel)
-            .where(ApplicationModel.id == app_id)
-            .values(is_deleted=True)
-        )
+        app = await self.repository.get_by_id(app_id)
+        if not app:
+            logger.warning(f"Application with id={app_id} not found")
+            raise NotFoundException(f"Application with id={app_id} not found")
+        await self.repository.soft_delete(app_id)
         logger.info(f"Application soft deleted with id={app_id}")
+        await delete_cached(f"{CACHE_PREFIX}:{app_id}")
+        await delete_cached_pattern(f"{CACHE_PREFIX}:list:*")

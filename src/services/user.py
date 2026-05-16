@@ -1,88 +1,87 @@
+import json
 import logging
 from uuid import UUID
 from typing import List
-import sqlalchemy as sa
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
 
-from src.models.user import UserModel
+from src.repositories.user import UserRepository
 from src.schemas.user import UserCreate, UserUpdate, UserRead
 from src.exceptions import NotFoundException, AlreadyExistsException
+from src.cache import get_cached, set_cached, delete_cached, delete_cached_pattern
 
 logger = logging.getLogger(__name__)
+
+CACHE_PREFIX = "user"
 
 
 class UserService:
 
-    def __init__(self, session: AsyncSession):
-        self.session = session
-
-    async def _get_user_orm(self, user_id: UUID) -> UserModel:
-        result = await self.session.execute(
-            sa.select(UserModel)
-            .options(
-                selectinload(UserModel.profile),
-                selectinload(UserModel.roles),
-            )
-            .where(UserModel.id == user_id)
-        )
-        user = result.scalar_one_or_none()
-        if not user:
-            logger.warning(f"User with id={user_id} not found")
-            raise NotFoundException(f"User with id={user_id} not found")
-        return user
+    def __init__(self, repository: UserRepository):
+        self.repository = repository
 
     async def create(self, data: UserCreate) -> UserRead:
-        existing = await self.session.execute(
-            sa.select(UserModel).where(
-                (UserModel.username == data.username) |
-                (UserModel.email == data.email)
-            )
-        )
-        if existing.scalar_one_or_none():
+        existing = await self.repository.get_by_username_or_email(data.username, data.email)
+        if existing:
             logger.warning(f"User with username='{data.username}' or email='{data.email}' already exists")
             raise AlreadyExistsException("Username or email already exists")
 
         user = data.to_model()
-        self.session.add(user)
-        await self.session.flush()
+        user = await self.repository.create(user)
         logger.info(f"User created with id={user.id}")
-        await self.session.refresh(user, ["profile", "roles"])
+        await delete_cached_pattern(f"{CACHE_PREFIX}:list:*")
         return UserRead.from_model(user)
 
     async def get_all(self, skip: int = 0, limit: int = 100) -> List[UserRead]:
+        cache_key = f"{CACHE_PREFIX}:list:{skip}:{limit}"
+        cached = await get_cached(cache_key)
+        if cached:
+            return [UserRead.model_validate(u) for u in json.loads(cached)]
+
         logger.info(f"Getting users skip={skip} limit={limit}")
-        result = await self.session.execute(
-            sa.select(UserModel)
-            .options(
-                selectinload(UserModel.profile),
-                selectinload(UserModel.roles),
-            )
-            .offset(skip)
-            .limit(limit)
-        )
-        return UserRead.from_list(result.scalars().all())
+        users = await self.repository.get_all(skip, limit)
+        result = UserRead.from_list(users)
+        await set_cached(cache_key, json.dumps([u.model_dump(mode="json") for u in result]))
+        return result
 
     async def get_by_id(self, user_id: UUID) -> UserRead:
-        user = await self._get_user_orm(user_id)
-        return UserRead.from_model(user)
+        cache_key = f"{CACHE_PREFIX}:{user_id}"
+        cached = await get_cached(cache_key)
+        if cached:
+            return UserRead.model_validate(json.loads(cached))
+
+        user = await self.repository.get_by_id(user_id)
+        if not user:
+            logger.warning(f"User with id={user_id} not found")
+            raise NotFoundException(f"User with id={user_id} not found")
+        result = UserRead.from_model(user)
+        await set_cached(cache_key, json.dumps(result.model_dump(mode="json")))
+        return result
 
     async def update(self, user_id: UUID, data: UserUpdate) -> UserRead:
-        user = await self._get_user_orm(user_id)
+        user = await self.repository.get_by_id(user_id)
+        if not user:
+            logger.warning(f"User with id={user_id} not found")
+            raise NotFoundException(f"User with id={user_id} not found")
 
         self._update_fields(user, data.model_dump(exclude_unset=True, exclude={"profile"}))
 
         if data.profile is not None:
             self._update_fields(user.profile, data.profile.model_dump(exclude_unset=True))
 
-        await self.session.flush()
+        await self.repository.update(user)
         logger.info(f"User updated with id={user_id}")
+        await delete_cached(f"{CACHE_PREFIX}:{user_id}")
+        await delete_cached_pattern(f"{CACHE_PREFIX}:list:*")
         return UserRead.from_model(user)
 
     async def delete(self, user_id: UUID) -> None:
-        user = await self._get_user_orm(user_id)
-        await self.session.delete(user)
+        user = await self.repository.get_by_id(user_id)
+        if not user:
+            logger.warning(f"User with id={user_id} not found")
+            raise NotFoundException(f"User with id={user_id} not found")
+        await self.repository.soft_delete(user)
         logger.info(f"User deleted with id={user_id}")
+        await delete_cached(f"{CACHE_PREFIX}:{user_id}")
+        await delete_cached_pattern(f"{CACHE_PREFIX}:list:*")
 
     @staticmethod
     def _update_fields(obj, fields: dict) -> None:

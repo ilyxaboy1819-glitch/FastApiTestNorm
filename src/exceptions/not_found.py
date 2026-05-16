@@ -1,7 +1,4 @@
-from fastapi import HTTPException
-from http import HTTPStatus
-
-
-class NotFoundException(HTTPException):
+class NotFoundException(Exception):
     def __init__(self, detail: str):
-        super().__init__(status_code=HTTPStatus.NOT_FOUND, detail=detail)
+        self.detail = detail
+        super().__init__(detail)
