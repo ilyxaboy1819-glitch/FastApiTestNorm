@@ -39,7 +39,20 @@ class OrderRepository:
         )
         await self.session.flush()
 
-    async def get_stuck_orders(self, stuck_minutes: int = 5) -> List[LocalOrderModel]:
+    async def increment_retry(self, order_id: UUID, next_retry_at: datetime) -> None:
+        await self.session.execute(
+            sa.update(LocalOrderModel)
+            .where(LocalOrderModel.id == order_id)
+            .values(
+                retry_count=LocalOrderModel.retry_count + 1,
+                next_retry_at=next_retry_at,
+            )
+        )
+        await self.session.flush()
+
+    async def get_stuck_orders(
+        self, stuck_minutes: int = 5, max_retries: int = 5, limit: int = 50
+    ) -> List[LocalOrderModel]:
         threshold = datetime.now(timezone.utc) - timedelta(minutes=stuck_minutes)
         result = await self.session.execute(
             sa.select(LocalOrderModel)
@@ -47,6 +60,13 @@ class OrderRepository:
                 LocalOrderModel.status == OrderStatus.NEW.value,
                 LocalOrderModel.is_deleted == False,
                 LocalOrderModel.created_at < threshold,
+                LocalOrderModel.retry_count < max_retries,
+                sa.or_(
+                    LocalOrderModel.next_retry_at == None,
+                    LocalOrderModel.next_retry_at <= datetime.now(timezone.utc),
+                ),
             )
+            .with_for_update(skip_locked=True)
+            .limit(limit)
         )
         return list(result.scalars().all())

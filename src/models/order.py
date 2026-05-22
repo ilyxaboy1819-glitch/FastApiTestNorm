@@ -1,5 +1,6 @@
 import sqlalchemy as sa
 from sqlalchemy.orm import Mapped, mapped_column
+from datetime import datetime
 from uuid import UUID
 from enum import Enum
 from typing import Optional
@@ -11,6 +12,7 @@ class OrderStatus(str, Enum):
     NEW = "new"
     CONFIRMED = "confirmed"
     CANCELLED = "cancelled"
+    FAILED = "failed"
 
 
 class LocalOrderModel(Base):
@@ -25,4 +27,10 @@ class LocalOrderModel(Base):
     )
     status: Mapped[str] = mapped_column(
         sa.String(50), nullable=False, server_default=OrderStatus.NEW.value
+    )
+    retry_count: Mapped[int] = mapped_column(
+        sa.Integer, nullable=False, server_default="0"
+    )
+    next_retry_at: Mapped[Optional[datetime]] = mapped_column(
+        sa.DateTime(timezone=True), nullable=True
     )

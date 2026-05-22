@@ -26,6 +26,8 @@ def upgrade() -> None:
         sa.Column('external_id', sa.UUID(), nullable=True),
         sa.Column('user_id', sa.UUID(), nullable=False),
         sa.Column('status', sa.String(50), nullable=False, server_default=OrderStatus.NEW.value),
+        sa.Column('retry_count', sa.Integer(), nullable=False, server_default='0'),
+        sa.Column('next_retry_at', sa.DateTime(timezone=True), nullable=True),
         sa.Column('created_at', sa.DateTime(), server_default=sa.text('now()'), nullable=False),
         sa.Column('updated_at', sa.DateTime(), nullable=True),
         sa.Column('is_deleted', sa.Boolean(), server_default=sa.text('false'), nullable=False),
