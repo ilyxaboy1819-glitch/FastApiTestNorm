@@ -42,7 +42,10 @@ class OrderRepository:
     async def increment_retry(self, order_id: UUID, next_retry_at: datetime) -> None:
         await self.session.execute(
             sa.update(LocalOrderModel)
-            .where(LocalOrderModel.id == order_id)
+            .where(
+                LocalOrderModel.id == order_id,
+                LocalOrderModel.status == OrderStatus.NEW.value,
+            )
             .values(
                 retry_count=LocalOrderModel.retry_count + 1,
                 next_retry_at=next_retry_at,

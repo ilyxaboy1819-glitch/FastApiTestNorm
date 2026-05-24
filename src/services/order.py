@@ -92,7 +92,14 @@ class OrderService:
             raise NotFoundException(f"Order with id={order_id} not found")
 
         if not local_order.external_id:
-            raise NotFoundException(f"Order with id={order_id} has no remote data (status={local_order.status})")
+            return OrderEnriched(
+                id=local_order.id,
+                user_id=local_order.user_id,
+                status=local_order.status,
+                items=[],
+                created_at=local_order.created_at,
+                updated_at=local_order.updated_at,
+            )
 
         remote_order = await self.order_client.get_order(local_order.external_id)
 

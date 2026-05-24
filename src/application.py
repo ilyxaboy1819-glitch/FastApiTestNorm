@@ -16,12 +16,12 @@ from src.routers.user import router as user_router
 from src.routers.application import router as application_router
 from src.routers.role import router as role_router
 from src.routers.order import router as order_router
-from src.workers.order_consistency import order_consistency_worker
+from src.workers.order_worker import order_worker
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    task = asyncio.create_task(order_consistency_worker())
+    task = asyncio.create_task(order_worker())
     yield
     task.cancel()
 
