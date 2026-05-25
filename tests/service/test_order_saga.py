@@ -1,6 +1,6 @@
 import uuid
 from datetime import datetime, timezone
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, patch, MagicMock
 
 import pytest
 
@@ -11,8 +11,8 @@ from src.schemas.order import (
 )
 from src.models.order import LocalOrderModel
 from src.schemas.user import UserRead
-from src.schemas.application import ApplicationRead
-from src.services.order import OrderService
+from src.schemas.application import ApplicationRead, ApplicationModel
+from src.services.application import ApplicationService
 
 
 def _make_user_read(**kwargs) -> UserRead:
@@ -48,6 +48,20 @@ def _make_remote_order_response(**kwargs) -> OrderResponse:
     return OrderResponse(**defaults)
 
 
+def _make_app_model():
+    model = MagicMock()
+    model.id = uuid.uuid4()
+    model.title = "TestApp"
+    model.description = None
+    model.comments = []
+    model.user_id = uuid.uuid4()
+    model.category_id = uuid.uuid4()
+    model.is_deleted = False
+    model.created_at = datetime.now(timezone.utc)
+    model.updated_at = None
+    return model
+
+
 @pytest.fixture
 def mock_order_client():
     return AsyncMock()
@@ -61,12 +75,10 @@ def mock_user_service():
 
 
 @pytest.fixture
-def mock_app_service():
-    service = AsyncMock()
-    service.get_by_id.return_value = ApplicationRead(
-        id=uuid.uuid4(), title="TestApp", description=None, comments=[]
-    )
-    return service
+def mock_app_repo():
+    repo = AsyncMock()
+    repo.get_by_id.return_value = _make_app_model()
+    return repo
 
 
 @pytest.fixture
@@ -82,12 +94,12 @@ def mock_order_repo():
 
 
 @pytest.fixture
-def order_service(mock_order_client, mock_user_service, mock_app_service, mock_order_repo):
-    return OrderService(
+def application_service(mock_order_client, mock_user_service, mock_app_repo, mock_order_repo):
+    return ApplicationService(
+        repository=mock_app_repo,
+        order_repo=mock_order_repo,
         order_client=mock_order_client,
         user_service=mock_user_service,
-        app_service=mock_app_service,
-        order_repo=mock_order_repo,
     )
 
 
@@ -105,13 +117,15 @@ def _make_order_create() -> OrderCreate:
 class TestSagaSuccess:
 
     @pytest.mark.asyncio
+    @patch("src.services.application.set_cached", new_callable=AsyncMock)
+    @patch("src.services.application.get_cached", return_value=None)
     async def test_create_saves_local_order_then_confirms(
-        self, order_service, mock_order_repo, mock_order_client
+        self, mock_get_cache, mock_set_cache, application_service, mock_order_repo, mock_order_client
     ):
         remote = _make_remote_order_response()
         mock_order_client.create_order.return_value = remote
 
-        result = await order_service.create(_make_order_create())
+        result = await application_service.create_order(_make_order_create())
 
         mock_order_repo.create.assert_called_once()
         mock_order_client.create_order.assert_called_once()
@@ -127,15 +141,17 @@ class TestSagaSuccess:
 class TestSagaCompensation:
 
     @pytest.mark.asyncio
+    @patch("src.services.application.set_cached", new_callable=AsyncMock)
+    @patch("src.services.application.get_cached", return_value=None)
     async def test_remote_failure_cancels_local_order(
-        self, order_service, mock_order_repo, mock_order_client
+        self, mock_get_cache, mock_set_cache, application_service, mock_order_repo, mock_order_client
     ):
         mock_order_client.create_order.side_effect = OrderServiceError(
             "Order service returned 500"
         )
 
         with pytest.raises(OrderServiceError):
-            await order_service.create(_make_order_create())
+            await application_service.create_order(_make_order_create())
 
         mock_order_repo.create.assert_called_once()
         mock_order_repo.update_status.assert_called_once_with(
@@ -144,13 +160,15 @@ class TestSagaCompensation:
         )
 
     @pytest.mark.asyncio
+    @patch("src.services.application.set_cached", new_callable=AsyncMock)
+    @patch("src.services.application.get_cached", return_value=None)
     async def test_remote_connection_error_cancels_local_order(
-        self, order_service, mock_order_repo, mock_order_client
+        self, mock_get_cache, mock_set_cache, application_service, mock_order_repo, mock_order_client
     ):
         mock_order_client.create_order.side_effect = ConnectionError("connection refused")
 
         with pytest.raises(ConnectionError):
-            await order_service.create(_make_order_create())
+            await application_service.create_order(_make_order_create())
 
         mock_order_repo.update_status.assert_called_once_with(
             mock_order_repo.create.return_value.id,
@@ -158,13 +176,15 @@ class TestSagaCompensation:
         )
 
     @pytest.mark.asyncio
+    @patch("src.services.application.set_cached", new_callable=AsyncMock)
+    @patch("src.services.application.get_cached", return_value=None)
     async def test_local_save_failure_does_not_call_remote(
-        self, order_service, mock_order_repo, mock_order_client
+        self, mock_get_cache, mock_set_cache, application_service, mock_order_repo, mock_order_client
     ):
         mock_order_repo.create.side_effect = Exception("DB connection lost")
 
         with pytest.raises(Exception, match="DB connection lost"):
-            await order_service.create(_make_order_create())
+            await application_service.create_order(_make_order_create())
 
         mock_order_client.create_order.assert_not_called()
         mock_order_repo.update_status.assert_not_called()

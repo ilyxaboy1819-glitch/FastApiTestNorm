@@ -15,8 +15,23 @@ def mock_repo():
 
 
 @pytest.fixture
-def service(mock_repo):
-    return ApplicationService(mock_repo)
+def mock_order_repo():
+    return AsyncMock()
+
+
+@pytest.fixture
+def mock_order_client():
+    return AsyncMock()
+
+
+@pytest.fixture
+def mock_user_service():
+    return AsyncMock()
+
+
+@pytest.fixture
+def service(mock_repo, mock_order_repo, mock_order_client, mock_user_service):
+    return ApplicationService(mock_repo, mock_order_repo, mock_order_client, mock_user_service)
 
 
 def _make_app(app_id=None):
