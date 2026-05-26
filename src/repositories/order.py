@@ -96,7 +96,7 @@ class OrderRepository:
                 LocalOrderModel.status == OrderStatus.NEW.value,
                 LocalOrderModel.is_deleted == False,
                 LocalOrderModel.created_at < threshold,
-                LocalOrderModel.retry_count < max_retries,
+                LocalOrderModel.retry_count <= max_retries,
                 sa.or_(
                     LocalOrderModel.next_retry_at == None,
                     LocalOrderModel.next_retry_at <= now,

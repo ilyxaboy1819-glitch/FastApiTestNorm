@@ -31,6 +31,7 @@ def upgrade() -> None:
         sa.Column('claimed_at', sa.DateTime(timezone=True), nullable=True),
         sa.Column('last_error', sa.Text(), nullable=True),
         sa.Column('idempotency_key', sa.String(36), nullable=True),
+        sa.Column('payload_json', sa.Text(), nullable=True),
         sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
         sa.Column('updated_at', sa.DateTime(timezone=True), nullable=True),
         sa.Column('is_deleted', sa.Boolean(), server_default=sa.text('false'), nullable=False),

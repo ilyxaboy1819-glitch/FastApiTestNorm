@@ -44,3 +44,6 @@ class LocalOrderModel(Base):
     idempotency_key: Mapped[Optional[str]] = mapped_column(
         sa.String(36), nullable=True
     )
+    payload_json: Mapped[Optional[str]] = mapped_column(
+        sa.Text, nullable=True
+    )
