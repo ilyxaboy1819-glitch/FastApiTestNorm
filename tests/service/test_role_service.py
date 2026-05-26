@@ -71,4 +71,4 @@ class TestRoleService:
         mock_repo.get_by_id.return_value = role
 
         await service.delete(role.id)
-        mock_repo.delete.assert_called_once_with(role)
+        mock_repo.soft_delete.assert_called_once_with(role)

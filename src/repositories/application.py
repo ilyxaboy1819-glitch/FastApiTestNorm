@@ -36,7 +36,6 @@ class ApplicationRepository:
             sa.select(ApplicationModel)
             .options(selectinload(ApplicationModel.comments))
             .where(ApplicationModel.is_deleted == False)
-            .with_for_update(skip_locked=True)
             .offset(skip)
             .limit(limit)
         )

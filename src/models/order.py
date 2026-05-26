@@ -41,3 +41,6 @@ class LocalOrderModel(Base):
     last_error: Mapped[Optional[str]] = mapped_column(
         sa.Text, nullable=True
     )
+    idempotency_key: Mapped[Optional[str]] = mapped_column(
+        sa.String(36), nullable=True
+    )

@@ -1,9 +1,9 @@
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker, create_async_engine
 from typing import AsyncGenerator
 
-from src.config import Settings
+from src.config import get_settings
 
-settings = Settings()
+settings = get_settings()
 
 engine: AsyncEngine = create_async_engine(
     str(settings.postgres_url),

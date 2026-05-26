@@ -131,6 +131,7 @@ class ApplicationService:
         local_order = LocalOrderModel(
             user_id=data.user_id,
             status=OrderStatus.NEW.value,
+            idempotency_key=idempotency_key,
         )
         local_order = await self.order_repository.create(local_order)
         logger.info(f"Local order created with id={local_order.id}, status=NEW")

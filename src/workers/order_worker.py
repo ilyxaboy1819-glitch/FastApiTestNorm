@@ -7,6 +7,7 @@ from uuid import UUID
 import httpx
 import pybreaker
 
+from src.cache import delete_cached
 from src.clients.order_service import OrderServiceClient
 from src.db import SessionFactory
 from src.exceptions import NotFoundException, OrderServiceError
@@ -21,6 +22,7 @@ MAX_RETRIES = 5
 BASE_BACKOFF = 60
 MAX_BACKOFF = 3600
 MAX_CONCURRENT = 10
+ORDER_CACHE_PREFIX = "order"
 
 _NETWORK_ERRORS = (
     httpx.ConnectError,
@@ -28,10 +30,6 @@ _NETWORK_ERRORS = (
     OrderServiceError,
     pybreaker.CircuitBreakerError,
 )
-
-
-async def _fetch_remote(client: OrderServiceClient, order_id: UUID):
-    return await client.get_order(order_id)
 
 
 async def _apply_status(order_id: UUID, status: str, external_id: UUID = None) -> None:
@@ -43,6 +41,7 @@ async def _apply_status(order_id: UUID, status: str, external_id: UUID = None) -
             external_id=external_id,
         )
         await session.commit()
+    await delete_cached(f"{ORDER_CACHE_PREFIX}:{order_id}")
 
 
 async def _mark_error(order_id: UUID, error: str) -> None:
@@ -51,6 +50,7 @@ async def _mark_error(order_id: UUID, error: str) -> None:
         await repo.update_status(order_id, OrderStatus.ERROR.value, expected_status=OrderStatus.NEW.value)
         await repo.save_last_error(order_id, error)
         await session.commit()
+    await delete_cached(f"{ORDER_CACHE_PREFIX}:{order_id}")
 
 
 async def _increment_with_backoff(order_id: UUID, retry_count: int, error: str | None = None) -> None:
@@ -69,7 +69,7 @@ async def _process_stuck_order(client: OrderServiceClient, order_id: UUID, retry
         return
 
     try:
-        remote = await _fetch_remote(client, order_id)
+        remote = await client.get_order(order_id)
     except NotFoundException:
         await _increment_with_backoff(order_id, retry_count, error="not found in remote service")
         logger.info(f"Order {order_id} not found in remote, retry {retry_count + 1}/{MAX_RETRIES}")
@@ -87,14 +87,9 @@ async def _process_stuck_order(client: OrderServiceClient, order_id: UUID, retry
     logger.info(f"Order {order_id} confirmed with external_id={remote.id}")
 
 
-async def _resolve_final_status(client: OrderServiceClient, order_id: UUID) -> tuple[str, UUID | None]:
-    remote = await _fetch_remote(client, order_id)
-    return OrderStatus.CONFIRMED.value, remote.id
-
-
 async def _handle_max_retries(client: OrderServiceClient, order_id: UUID) -> None:
     try:
-        status, external_id = await _resolve_final_status(client, order_id)
+        remote = await client.get_order(order_id)
     except NotFoundException:
         await _apply_status(order_id, OrderStatus.CANCELLED.value)
         logger.warning(f"Order {order_id} not found after max retries, CANCELLED")
@@ -107,8 +102,8 @@ async def _handle_max_retries(client: OrderServiceClient, order_id: UUID) -> Non
         logger.error(f"Order {order_id} unexpected error on final attempt, skipping: {e}")
         return
 
-    await _apply_status(order_id, status, external_id=external_id)
-    logger.info(f"Order {order_id} confirmed on final attempt with external_id={external_id}")
+    await _apply_status(order_id, OrderStatus.CONFIRMED.value, external_id=remote.id)
+    logger.info(f"Order {order_id} confirmed on final attempt with external_id={remote.id}")
 
 
 async def _claim_and_fetch_orders() -> list[tuple[UUID, int]]:

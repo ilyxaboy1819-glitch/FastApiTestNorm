@@ -17,6 +17,8 @@ from src.db import get_session
 from src.repositories.user import UserRepository
 from src.repositories.role import RoleRepository
 from src.repositories.application import ApplicationRepository
+from src.repositories.order import OrderRepository
+from src.clients.order_service import OrderServiceClient
 from src.services.user import UserService
 from src.services.role import RoleService
 from src.services.application import ApplicationService
@@ -86,6 +88,17 @@ def application_repository(session: AsyncSession) -> ApplicationRepository:
 
 
 @pytest.fixture
+def order_repository(session: AsyncSession) -> OrderRepository:
+    return OrderRepository(session)
+
+
+@pytest.fixture
+def mock_order_client():
+    from unittest.mock import AsyncMock
+    return AsyncMock(spec=OrderServiceClient)
+
+
+@pytest.fixture
 def user_service(user_repository: UserRepository) -> UserService:
     return UserService(user_repository)
 
@@ -96,8 +109,13 @@ def role_service(role_repository: RoleRepository) -> RoleService:
 
 
 @pytest.fixture
-def application_service(application_repository: ApplicationRepository) -> ApplicationService:
-    return ApplicationService(application_repository)
+def application_service(
+    application_repository: ApplicationRepository,
+    order_repository: OrderRepository,
+    mock_order_client,
+    user_service: UserService,
+) -> ApplicationService:
+    return ApplicationService(application_repository, order_repository, mock_order_client, user_service)
 
 
 @pytest.fixture
