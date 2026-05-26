@@ -130,12 +130,12 @@ class ApplicationService:
 
         local_order = LocalOrderModel(
             user_id=data.user_id,
-            status=OrderStatus.NEW.value,
+            status=OrderStatus.PENDING.value,
             idempotency_key=idempotency_key,
             payload_json=payload.model_dump_json(),
         )
         local_order = await self.order_repository.create(local_order)
-        logger.info(f"Local order created with id={local_order.id}, status=NEW")
+        logger.info(f"Local order created with id={local_order.id}, status=PENDING")
 
         try:
             remote_order = await self.order_client.create_order(payload)
@@ -143,7 +143,7 @@ class ApplicationService:
             await self.order_repository.update_status(
                 local_order.id,
                 OrderStatus.CONFIRMED.value,
-                expected_status=OrderStatus.NEW.value,
+                expected_status=OrderStatus.PENDING.value,
                 external_id=remote_order.id,
             )
             logger.info(f"Local order {local_order.id} confirmed, external_id={remote_order.id}")
@@ -155,7 +155,7 @@ class ApplicationService:
             return OrderEnriched(
                 id=local_order.id,
                 user_id=local_order.user_id,
-                status=OrderStatus.NEW.value,
+                status=OrderStatus.PENDING.value,
                 items=[],
                 created_at=local_order.created_at,
                 updated_at=local_order.updated_at,
@@ -166,7 +166,7 @@ class ApplicationService:
             await self.order_repository.update_status(
                 local_order.id,
                 OrderStatus.ERROR.value,
-                expected_status=OrderStatus.NEW.value,
+                expected_status=OrderStatus.PENDING.value,
             )
             raise
 

@@ -7,7 +7,6 @@ from uuid import UUID
 import httpx
 import pybreaker
 
-from src.cache import delete_cached
 from src.clients.order_service import OrderServiceClient
 from src.db import SessionFactory
 from src.exceptions import NotFoundException, OrderServiceError
@@ -23,7 +22,6 @@ MAX_RETRIES = 5
 BASE_BACKOFF = 60
 MAX_BACKOFF = 3600
 MAX_CONCURRENT = 10
-ORDER_CACHE_PREFIX = "order"
 
 _NETWORK_ERRORS = (
     httpx.ConnectError,
@@ -38,20 +36,18 @@ async def _apply_status(order_id: UUID, status: str, external_id: UUID = None) -
         repo = OrderRepository(session)
         await repo.update_status(
             order_id, status,
-            expected_status=OrderStatus.NEW.value,
+            expected_status=OrderStatus.PENDING.value,
             external_id=external_id,
         )
         await session.commit()
-    await delete_cached(f"{ORDER_CACHE_PREFIX}:{order_id}")
 
 
 async def _mark_error(order_id: UUID, error: str) -> None:
     async with SessionFactory() as session:
         repo = OrderRepository(session)
-        await repo.update_status(order_id, OrderStatus.ERROR.value, expected_status=OrderStatus.NEW.value)
+        await repo.update_status(order_id, OrderStatus.ERROR.value, expected_status=OrderStatus.PENDING.value)
         await repo.save_last_error(order_id, error)
         await session.commit()
-    await delete_cached(f"{ORDER_CACHE_PREFIX}:{order_id}")
 
 
 async def _increment_with_backoff(order_id: UUID, retry_count: int, error: str | None = None) -> None:

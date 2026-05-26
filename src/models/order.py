@@ -9,7 +9,7 @@ from src.models.base import Base
 
 
 class OrderStatus(str, Enum):
-    NEW = "new"
+    PENDING = "pending"
     CONFIRMED = "confirmed"
     CANCELLED = "cancelled"
     FAILED = "failed"
@@ -27,7 +27,7 @@ class LocalOrderModel(Base):
         nullable=False,
     )
     status: Mapped[str] = mapped_column(
-        sa.String(50), nullable=False, server_default=OrderStatus.NEW.value
+        sa.String(50), nullable=False, server_default=OrderStatus.PENDING.value
     )
     retry_count: Mapped[int] = mapped_column(
         sa.Integer, nullable=False, server_default="0"

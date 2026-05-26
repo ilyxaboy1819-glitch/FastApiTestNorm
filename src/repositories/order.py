@@ -63,7 +63,7 @@ class OrderRepository:
             sa.update(LocalOrderModel)
             .where(
                 LocalOrderModel.id == order_id,
-                LocalOrderModel.status == OrderStatus.NEW.value,
+                LocalOrderModel.status == OrderStatus.PENDING.value,
             )
             .values(**values)
         )
@@ -93,7 +93,7 @@ class OrderRepository:
         result = await self.session.execute(
             sa.select(LocalOrderModel)
             .where(
-                LocalOrderModel.status == OrderStatus.NEW.value,
+                LocalOrderModel.status == OrderStatus.PENDING.value,
                 LocalOrderModel.is_deleted == False,
                 LocalOrderModel.created_at < threshold,
                 LocalOrderModel.retry_count <= max_retries,

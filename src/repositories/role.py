@@ -36,6 +36,7 @@ class RoleRepository:
             sa.select(RoleModel)
             .options(selectinload(RoleModel.users))
             .where(RoleModel.is_deleted == False)
+            .with_for_update(skip_locked=True)
             .offset(skip)
             .limit(limit)
         )
