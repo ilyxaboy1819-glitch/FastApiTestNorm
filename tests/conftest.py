@@ -1,6 +1,7 @@
 import pytest
 import pytest_asyncio
 from typing import AsyncGenerator
+from unittest.mock import AsyncMock
 
 from alembic import command
 from alembic.config import Config
@@ -94,7 +95,6 @@ def order_repository(session: AsyncSession) -> OrderRepository:
 
 @pytest.fixture
 def mock_order_client():
-    from unittest.mock import AsyncMock
     return AsyncMock(spec=OrderServiceClient)
 
 
