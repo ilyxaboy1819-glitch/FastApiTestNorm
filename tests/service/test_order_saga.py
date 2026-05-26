@@ -97,7 +97,7 @@ def mock_order_repo():
 def application_service(mock_order_client, mock_user_service, mock_app_repo, mock_order_repo):
     return ApplicationService(
         repository=mock_app_repo,
-        order_repo=mock_order_repo,
+        order_repository=mock_order_repo,
         order_client=mock_order_client,
         user_service=mock_user_service,
     )
@@ -132,47 +132,49 @@ class TestSagaSuccess:
         mock_order_repo.update_status.assert_called_once_with(
             mock_order_repo.create.return_value.id,
             OrderStatus.CONFIRMED.value,
+            expected_status=OrderStatus.NEW.value,
             external_id=remote.id,
         )
         assert result.status == OrderStatus.CONFIRMED.value
         assert result.user_email == remote.user_email
 
 
-class TestSagaCompensation:
+class TestSagaNetworkError:
 
     @pytest.mark.asyncio
     @patch("src.services.application.set_cached", new_callable=AsyncMock)
     @patch("src.services.application.get_cached", return_value=None)
-    async def test_remote_failure_cancels_local_order(
+    async def test_network_error_leaves_order_new(
         self, mock_get_cache, mock_set_cache, application_service, mock_order_repo, mock_order_client
     ):
         mock_order_client.create_order.side_effect = OrderServiceError(
             "Order service returned 500"
         )
 
-        with pytest.raises(OrderServiceError):
-            await application_service.create_order(_make_order_create())
+        result = await application_service.create_order(_make_order_create())
 
         mock_order_repo.create.assert_called_once()
-        mock_order_repo.update_status.assert_called_once_with(
-            mock_order_repo.create.return_value.id,
-            OrderStatus.CANCELLED.value,
-        )
+        mock_order_repo.update_status.assert_not_called()
+        assert result.status == OrderStatus.NEW.value
+
+
+class TestSagaCodeBug:
 
     @pytest.mark.asyncio
     @patch("src.services.application.set_cached", new_callable=AsyncMock)
     @patch("src.services.application.get_cached", return_value=None)
-    async def test_remote_connection_error_cancels_local_order(
+    async def test_unexpected_error_marks_order_error_and_raises(
         self, mock_get_cache, mock_set_cache, application_service, mock_order_repo, mock_order_client
     ):
-        mock_order_client.create_order.side_effect = ConnectionError("connection refused")
+        mock_order_client.create_order.side_effect = ValueError("unexpected bug")
 
-        with pytest.raises(ConnectionError):
+        with pytest.raises(ValueError, match="unexpected bug"):
             await application_service.create_order(_make_order_create())
 
         mock_order_repo.update_status.assert_called_once_with(
             mock_order_repo.create.return_value.id,
-            OrderStatus.CANCELLED.value,
+            OrderStatus.ERROR.value,
+            expected_status=OrderStatus.NEW.value,
         )
 
     @pytest.mark.asyncio

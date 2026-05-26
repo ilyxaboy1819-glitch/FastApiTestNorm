@@ -23,6 +23,7 @@ class OrderPayload(BaseModel):
     user_email: str
     user_name: str
     items: list[OrderItemPayload]
+    idempotency_key: str | None = None
 
 
 class OrderCreate(BaseModel):

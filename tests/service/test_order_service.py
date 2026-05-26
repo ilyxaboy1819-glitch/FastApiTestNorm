@@ -49,7 +49,7 @@ def mock_order_repo():
 def application_service(mock_order_client, mock_user_service, mock_app_repo, mock_order_repo):
     return ApplicationService(
         repository=mock_app_repo,
-        order_repo=mock_order_repo,
+        order_repository=mock_order_repo,
         order_client=mock_order_client,
         user_service=mock_user_service,
     )

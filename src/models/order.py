@@ -13,6 +13,7 @@ class OrderStatus(str, Enum):
     CONFIRMED = "confirmed"
     CANCELLED = "cancelled"
     FAILED = "failed"
+    ERROR = "error"
 
 
 class LocalOrderModel(Base):
@@ -33,4 +34,10 @@ class LocalOrderModel(Base):
     )
     next_retry_at: Mapped[Optional[datetime]] = mapped_column(
         sa.DateTime(timezone=True), nullable=True
+    )
+    claimed_at: Mapped[Optional[datetime]] = mapped_column(
+        sa.DateTime(timezone=True), nullable=True
+    )
+    last_error: Mapped[Optional[str]] = mapped_column(
+        sa.Text, nullable=True
     )

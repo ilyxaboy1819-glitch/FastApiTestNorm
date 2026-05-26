@@ -1,11 +1,14 @@
 import json
 import logging
+import uuid
 from uuid import UUID
 from typing import List
 
-from src.clients.order_service import OrderServiceClient
+import httpx
+
 from src.repositories.application import ApplicationRepository
 from src.repositories.order import OrderRepository
+from src.clients.order_service import OrderServiceClient
 from src.services.user import UserService
 from src.schemas.application import ApplicationCreate, ApplicationUpdate, ApplicationRead
 from src.schemas.order import (
@@ -13,7 +16,7 @@ from src.schemas.order import (
     OrderItemPayload, OrderPayload,
 )
 from src.models.order import LocalOrderModel, OrderStatus
-from src.exceptions import NotFoundException
+from src.exceptions import NotFoundException, OrderServiceError
 from src.cache import get_cached, set_cached, delete_cached, delete_cached_pattern
 
 logger = logging.getLogger(__name__)
@@ -21,18 +24,24 @@ logger = logging.getLogger(__name__)
 CACHE_PREFIX = "application"
 ORDER_CACHE_PREFIX = "order"
 
+_NETWORK_ERRORS = (
+    OrderServiceError,
+    httpx.ConnectError,
+    httpx.TimeoutException,
+)
+
 
 class ApplicationService:
 
     def __init__(
         self,
         repository: ApplicationRepository,
-        order_repo: OrderRepository,
+        order_repository: OrderRepository,
         order_client: OrderServiceClient,
         user_service: UserService,
     ):
         self.repository = repository
-        self.order_repo = order_repo
+        self.order_repository = order_repository
         self.order_client = order_client
         self.user_service = user_service
 
@@ -96,9 +105,11 @@ class ApplicationService:
     async def create_order(self, data: OrderCreate) -> OrderEnriched:
         user = await self.user_service.get_by_id(data.user_id)
 
+        applications = [await self.get_by_id(item.application_id) for item in data.items]
+
         items_payload = []
         for item in data.items:
-            app = await self.get_by_id(item.application_id)
+            app = next(a for a in applications if a.id == item.application_id)
             items_payload.append(OrderItemPayload(
                 application_id=str(item.application_id),
                 quantity=item.quantity,
@@ -107,38 +118,54 @@ class ApplicationService:
                 application_category=None,
             ))
 
+        idempotency_key = str(uuid.uuid4())
+
         payload = OrderPayload(
             user_id=str(data.user_id),
             user_email=user.email,
             user_name=user.username,
             items=items_payload,
+            idempotency_key=idempotency_key,
         )
 
         local_order = LocalOrderModel(
             user_id=data.user_id,
             status=OrderStatus.NEW.value,
         )
-        local_order = await self.order_repo.create(local_order)
+        local_order = await self.order_repository.create(local_order)
         logger.info(f"Local order created with id={local_order.id}, status=NEW")
 
         try:
             remote_order = await self.order_client.create_order(payload)
 
-            await self.order_repo.update_status(
+            await self.order_repository.update_status(
                 local_order.id,
                 OrderStatus.CONFIRMED.value,
+                expected_status=OrderStatus.NEW.value,
                 external_id=remote_order.id,
             )
             logger.info(f"Local order {local_order.id} confirmed, external_id={remote_order.id}")
 
             return self._to_enriched(remote_order, local_order.id, OrderStatus.CONFIRMED.value)
 
-        except Exception as e:
-            await self.order_repo.update_status(
-                local_order.id,
-                OrderStatus.CANCELLED.value,
+        except _NETWORK_ERRORS as e:
+            logger.warning(f"Order saga network error for local_order={local_order.id}: {e}")
+            return OrderEnriched(
+                id=local_order.id,
+                user_id=local_order.user_id,
+                status=OrderStatus.NEW.value,
+                items=[],
+                created_at=local_order.created_at,
+                updated_at=local_order.updated_at,
             )
-            logger.error(f"Order saga failed for local_order={local_order.id}: {e}")
+
+        except Exception as e:
+            logger.error(f"Order saga unexpected error for local_order={local_order.id}: {e}")
+            await self.order_repository.update_status(
+                local_order.id,
+                OrderStatus.ERROR.value,
+                expected_status=OrderStatus.NEW.value,
+            )
             raise
 
     async def get_order_by_id(self, order_id: UUID) -> OrderEnriched:
@@ -147,9 +174,7 @@ class ApplicationService:
         if cached:
             return OrderEnriched.model_validate(json.loads(cached))
 
-        local_order = await self.order_repo.get_by_id(order_id)
-        if not local_order:
-            raise NotFoundException(f"Order with id={order_id} not found")
+        local_order = await self._get_order_orm(order_id)
 
         if not local_order.external_id:
             return OrderEnriched(
@@ -166,6 +191,12 @@ class ApplicationService:
         result = self._to_enriched(remote_order, local_order.id, local_order.status)
         await set_cached(cache_key, json.dumps(result.model_dump(mode="json")))
         return result
+
+    async def _get_order_orm(self, order_id: UUID) -> LocalOrderModel:
+        order = await self.order_repository.get_by_id(order_id)
+        if not order:
+            raise NotFoundException(f"Order with id={order_id} not found")
+        return order
 
     @staticmethod
     def _to_enriched(

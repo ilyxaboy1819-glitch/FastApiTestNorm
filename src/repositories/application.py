@@ -55,3 +55,4 @@ class ApplicationRepository:
             .where(ApplicationModel.id == app_id)
             .values(is_deleted=True)
         )
+

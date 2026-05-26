@@ -4,7 +4,6 @@ from uuid import UUID
 
 import httpx
 import pybreaker
-from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential, wait_random
 
 from src.config import Settings
 from src.exceptions import NotFoundException, OrderServiceError
@@ -20,20 +19,14 @@ order_circuit_breaker = pybreaker.CircuitBreaker(
     name="order-service",
 )
 
-_RETRYABLE = (OrderServiceError, httpx.ConnectError, httpx.TimeoutException)
-
-
-def _retry():
-    return retry(
-        retry=retry_if_exception_type(_RETRYABLE),
-        stop=stop_after_attempt(settings.retry_max_attempts),
-        wait=wait_exponential(
-            multiplier=1,
-            min=settings.retry_min_wait,
-            max=settings.retry_max_wait,
-        ) + wait_random(0, 1),
-        reraise=True,
-    )
+_RETRYABLE_STATUSES = {
+    HTTPStatus.INTERNAL_SERVER_ERROR,
+    HTTPStatus.BAD_GATEWAY,
+    HTTPStatus.SERVICE_UNAVAILABLE,
+    HTTPStatus.GATEWAY_TIMEOUT,
+    HTTPStatus.REQUEST_TIMEOUT,
+    HTTPStatus.TOO_MANY_REQUESTS,
+}
 
 
 class OrderServiceClient:
@@ -41,37 +34,17 @@ class OrderServiceClient:
     def __init__(self, base_url: str = settings.service2_url) -> None:
         self._base_url = base_url
 
-    @_retry()
     async def create_order(self, payload: OrderPayload) -> OrderResponse:
-        try:
-            @order_circuit_breaker
-            async def _call():
-                async with httpx.AsyncClient(base_url=self._base_url, timeout=5.0) as client:
-                    return await client.post("/api/v1/orders/", json=payload.model_dump())
-
-            response = await _call()
-        except pybreaker.CircuitBreakerError:
-            logger.warning("Circuit breaker OPEN — order service unavailable")
-            raise OrderServiceError("Order service is unavailable (circuit breaker open)")
+        response = await self._request("POST", "/api/v1/orders/", json=payload.model_dump())
 
         if response.status_code == HTTPStatus.CREATED:
             return OrderResponse.model_validate(response.json())
 
         logger.error(f"Order service returned {response.status_code}: {response.text}")
-        raise OrderServiceError(f"Order service returned {response.status_code}: {response.text}")
+        raise OrderServiceError(f"Order service returned {response.status_code}")
 
-    @_retry()
     async def get_order(self, order_id: UUID) -> OrderResponse:
-        try:
-            @order_circuit_breaker
-            async def _call():
-                async with httpx.AsyncClient(base_url=self._base_url, timeout=5.0) as client:
-                    return await client.get(f"/api/v1/orders/{order_id}")
-
-            response = await _call()
-        except pybreaker.CircuitBreakerError:
-            logger.warning(f"Circuit breaker OPEN — order service unavailable, order_id={order_id}")
-            raise OrderServiceError("Order service is unavailable (circuit breaker open)")
+        response = await self._request("GET", f"/api/v1/orders/{order_id}")
 
         if response.status_code == HTTPStatus.OK:
             return OrderResponse.model_validate(response.json())
@@ -79,4 +52,32 @@ class OrderServiceClient:
             raise NotFoundException(f"Order with id={order_id} not found in order service")
 
         logger.error(f"Order service returned {response.status_code}: {response.text}")
-        raise OrderServiceError(f"Order service returned {response.status_code}: {response.text}")
+        raise OrderServiceError(f"Order service returned {response.status_code}")
+
+    async def _request(self, method: str, path: str, **kwargs) -> httpx.Response:
+        for attempt in range(settings.retry_max_attempts):
+            try:
+                @order_circuit_breaker
+                async def _call():
+                    async with httpx.AsyncClient(base_url=self._base_url, timeout=5.0) as client:
+                        return await client.request(method, path, **kwargs)
+
+                response = await _call()
+            except pybreaker.CircuitBreakerError:
+                logger.warning("Circuit breaker OPEN — order service unavailable")
+                raise OrderServiceError("Order service is unavailable (circuit breaker open)")
+            except (httpx.ConnectError, httpx.TimeoutException) as e:
+                if attempt == settings.retry_max_attempts - 1:
+                    raise OrderServiceError(f"Order service connection failed: {e}")
+                logger.warning(f"Order service request failed (attempt {attempt + 1}): {e}")
+                continue
+
+            if response.status_code not in _RETRYABLE_STATUSES:
+                return response
+
+            if attempt == settings.retry_max_attempts - 1:
+                return response
+
+            logger.warning(f"Order service returned {response.status_code}, retrying (attempt {attempt + 1})")
+
+        return response
