@@ -167,11 +167,9 @@ async def _handle_max_retries_without_id(client: OrderServiceClient, order: Loca
 async def _claim_and_fetch_orders() -> list[LocalOrderModel]:
     async with SessionFactory() as session:
         repo = OrderRepository(session)
-        stuck_orders = await repo.get_stuck_orders(STUCK_MINUTES, MAX_RETRIES)
-        for order in stuck_orders:
-            await repo.claim(order.id)
+        orders = await repo.claim_stuck_orders(STUCK_MINUTES, MAX_RETRIES)
         await session.commit()
-    return stuck_orders
+    return orders
 
 
 async def order_worker() -> None:

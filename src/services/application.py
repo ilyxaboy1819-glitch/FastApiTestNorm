@@ -105,11 +105,17 @@ class ApplicationService:
     async def create_order(self, data: OrderCreate) -> OrderEnriched:
         user = await self.user_service.get_by_id(data.user_id)
 
-        applications = [await self.get_by_id(item.application_id) for item in data.items]
+        app_ids = [item.application_id for item in data.items]
+        apps = await self.repository.get_by_ids(app_ids)
+        apps_map = {app.id: app for app in apps}
+
+        for app_id in app_ids:
+            if app_id not in apps_map:
+                raise NotFoundException(f"Application with id={app_id} not found")
 
         items_payload = []
         for item in data.items:
-            app = next(a for a in applications if a.id == item.application_id)
+            app = apps_map[item.application_id]
             items_payload.append(OrderItemPayload(
                 application_id=str(item.application_id),
                 quantity=item.quantity,

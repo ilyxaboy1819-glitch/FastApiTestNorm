@@ -69,14 +69,6 @@ class OrderRepository:
         )
         await self.session.flush()
 
-    async def claim(self, order_id: UUID) -> None:
-        await self.session.execute(
-            sa.update(LocalOrderModel)
-            .where(LocalOrderModel.id == order_id)
-            .values(claimed_at=datetime.now(timezone.utc))
-        )
-        await self.session.flush()
-
     async def save_last_error(self, order_id: UUID, error: str) -> None:
         await self.session.execute(
             sa.update(LocalOrderModel)
@@ -85,13 +77,14 @@ class OrderRepository:
         )
         await self.session.flush()
 
-    async def get_stuck_orders(
+    async def claim_stuck_orders(
         self, stuck_minutes: int = 5, max_retries: int = 5, limit: int = 50
     ) -> List[LocalOrderModel]:
         now = datetime.now(timezone.utc)
         threshold = now - timedelta(minutes=stuck_minutes)
-        result = await self.session.execute(
-            sa.select(LocalOrderModel)
+
+        subquery = (
+            sa.select(LocalOrderModel.id)
             .where(
                 LocalOrderModel.status == OrderStatus.PENDING.value,
                 LocalOrderModel.is_deleted == False,
@@ -108,5 +101,13 @@ class OrderRepository:
             )
             .with_for_update(skip_locked=True)
             .limit(limit)
+        ).scalar_subquery()
+
+        result = await self.session.execute(
+            sa.update(LocalOrderModel)
+            .where(LocalOrderModel.id.in_(subquery))
+            .values(claimed_at=now)
+            .returning(LocalOrderModel)
         )
+        await self.session.flush()
         return list(result.scalars().all())

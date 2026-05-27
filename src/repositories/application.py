@@ -31,6 +31,17 @@ class ApplicationRepository:
         )
         return result.scalar_one_or_none()
 
+    async def get_by_ids(self, app_ids: List[UUID]) -> List[ApplicationModel]:
+        result = await self.session.execute(
+            sa.select(ApplicationModel)
+            .options(selectinload(ApplicationModel.comments))
+            .where(
+                ApplicationModel.id.in_(app_ids),
+                ApplicationModel.is_deleted == False,
+            )
+        )
+        return list(result.scalars().all())
+
     async def get_all(self, skip: int = 0, limit: int = 100) -> List[ApplicationModel]:
         result = await self.session.execute(
             sa.select(ApplicationModel)
