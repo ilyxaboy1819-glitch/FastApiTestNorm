@@ -8,15 +8,23 @@ services:
     ports:
       - "5433:5432"
 
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+
   fastapi:
     build: .
     ports:
       - "8000:8000"
     depends_on:
       - postgres
+      - redis
     environment:
       - PYTHONPATH=/app
       - postgres_url=postgresql+asyncpg://postgres:123456@postgres:5432/postgres
+      - redis_url=redis://redis:6379/0
+      - service2_url=http://host.docker.internal:8001
     command: >
       sh -c "/app/.venv/bin/alembic upgrade head &&
              /app/.venv/bin/uvicorn src.main:app --host 0.0.0.0 --port 8000"

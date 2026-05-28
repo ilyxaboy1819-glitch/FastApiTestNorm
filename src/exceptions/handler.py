@@ -3,7 +3,7 @@ from http import HTTPStatus
 from fastapi import Request
 from fastapi.responses import UJSONResponse
 
-from src.exceptions import ValidationException
+from src.exceptions import ValidationException, NotFoundException, AlreadyExistsException
 from src.schemas.error import ValidationErrorResponse
 
 
@@ -12,4 +12,18 @@ async def validation_exception_handler(request: Request, exc: ValidationExceptio
     return UJSONResponse(
         status_code=HTTPStatus.UNPROCESSABLE_ENTITY,
         content=body.model_dump(),
+    )
+
+
+async def not_found_exception_handler(request: Request, exc: NotFoundException) -> UJSONResponse:
+    return UJSONResponse(
+        status_code=HTTPStatus.NOT_FOUND,
+        content={"detail": exc.detail},
+    )
+
+
+async def already_exists_exception_handler(request: Request, exc: AlreadyExistsException) -> UJSONResponse:
+    return UJSONResponse(
+        status_code=HTTPStatus.CONFLICT,
+        content={"detail": exc.detail},
     )

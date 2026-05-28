@@ -1,82 +1,89 @@
+import json
 import logging
 from uuid import UUID
 from typing import List
 
-import sqlalchemy as sa
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
-
 from src.models.role import RoleModel
+from src.repositories.role import RoleRepository
 from src.schemas.role import RoleCreate, RoleUpdate, RoleRead
 from src.exceptions import NotFoundException, AlreadyExistsException
+from src.cache import get_cached, set_cached, delete_cached, delete_cached_pattern
 
 logger = logging.getLogger(__name__)
+
+CACHE_PREFIX = "role"
 
 
 class RoleService:
 
-    def __init__(self, session: AsyncSession):
-        self.session = session
-
-    async def _get_role_orm(self, role_id: UUID) -> RoleModel:
-        result = await self.session.execute(
-            sa.select(RoleModel)
-            .options(selectinload(RoleModel.users))
-            .where(RoleModel.id == role_id)
-        )
-        role = result.scalar_one_or_none()
-        if not role:
-            logger.warning(f"Role with id={role_id} not found")
-            raise NotFoundException(f"Role with id={role_id} not found")
-        return role
+    def __init__(self, repository: RoleRepository):
+        self.repository = repository
 
     async def create(self, data: RoleCreate) -> RoleRead:
-        existing = await self.session.execute(
-            sa.select(RoleModel).where(RoleModel.name == data.name)
-        )
-        if existing.scalar_one_or_none():
+        existing = await self.repository.get_by_name(data.name)
+        if existing:
             logger.warning(f"Role with name='{data.name}' already exists")
             raise AlreadyExistsException("Role with this name already exists")
 
         role = RoleModel(**data.model_dump())
-        self.session.add(role)
-        await self.session.flush()
-        await self.session.refresh(role, ["users"])
+        role = await self.repository.create(role)
         logger.info(f"Role created with id={role.id}")
+        await delete_cached_pattern(f"{CACHE_PREFIX}:list:*")
         return RoleRead.from_model(role)
 
     async def get_all(self, skip: int = 0, limit: int = 100) -> List[RoleRead]:
+        cache_key = f"{CACHE_PREFIX}:list:{skip}:{limit}"
+        cached = await get_cached(cache_key)
+        if cached:
+            return [RoleRead.model_validate(r) for r in json.loads(cached)]
+
         logger.info(f"Getting roles skip={skip} limit={limit}")
-        result = await self.session.execute(
-            sa.select(RoleModel)
-            .options(selectinload(RoleModel.users))
-            .offset(skip)
-            .limit(limit)
-        )
-        return RoleRead.from_list(result.scalars().all())
+        roles = await self.repository.get_all(skip, limit)
+        result = RoleRead.from_list(roles)
+        await set_cached(cache_key, json.dumps([r.model_dump(mode="json") for r in result]))
+        return result
 
     async def get_by_id(self, role_id: UUID) -> RoleRead:
-        role = await self._get_role_orm(role_id)
-        return RoleRead.from_model(role)
+        cache_key = f"{CACHE_PREFIX}:{role_id}"
+        cached = await get_cached(cache_key)
+        if cached:
+            return RoleRead.model_validate(json.loads(cached))
+
+        role = await self.repository.get_by_id(role_id)
+        if not role:
+            logger.warning(f"Role with id={role_id} not found")
+            raise NotFoundException(f"Role with id={role_id} not found")
+        result = RoleRead.from_model(role)
+        await set_cached(cache_key, json.dumps(result.model_dump(mode="json")))
+        return result
 
     async def update(self, role_id: UUID, data: RoleUpdate) -> RoleRead:
-        existing = await self.session.execute(
-            sa.select(RoleModel).where(RoleModel.name == data.name)
-        )
-        if existing.scalar_one_or_none():
+        existing = await self.repository.get_by_name(data.name)
+        if existing:
             logger.warning(f"Role with name='{data.name}' already exists")
             raise AlreadyExistsException("Role with this name already exists")
 
-        role = await self._get_role_orm(role_id)
+        role = await self.repository.get_by_id(role_id)
+        if not role:
+            logger.warning(f"Role with id={role_id} not found")
+            raise NotFoundException(f"Role with id={role_id} not found")
+
         self._update_fields(role, data.model_dump(exclude_unset=True))
-        await self.session.flush()
+        await self.repository.update(role)
         logger.info(f"Role updated with id={role_id}")
+        await delete_cached(f"{CACHE_PREFIX}:{role_id}")
+        await delete_cached_pattern(f"{CACHE_PREFIX}:list:*")
         return RoleRead.from_model(role)
 
     async def delete(self, role_id: UUID) -> None:
-        role = await self._get_role_orm(role_id)
-        await self.session.delete(role)
+        role = await self.repository.get_by_id(role_id)
+        if not role:
+            logger.warning(f"Role with id={role_id} not found")
+            raise NotFoundException(f"Role with id={role_id} not found")
+        await self.repository.soft_delete(role)
         logger.info(f"Role deleted with id={role_id}")
+        await delete_cached(f"{CACHE_PREFIX}:{role_id}")
+        await delete_cached_pattern(f"{CACHE_PREFIX}:list:*")
 
     @staticmethod
     def _update_fields(obj, fields: dict) -> None:

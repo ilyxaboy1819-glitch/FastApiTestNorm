@@ -1,3 +1,6 @@
+[tool.poetry]
+package-mode = false
+
 [project]
 name = "fastapitestnorm"
 version = "0.1.0"
@@ -15,9 +18,25 @@ dependencies = [
     "uvicorn (>=0.40.0,<0.41.0)",
     "ujson (>=5.11.0,<6.0.0)",
     "sqlalchemy (>=2.0.46,<3.0.0)",
-    "email-validator (>=2.3.0,<3.0.0)"
+    "email-validator (>=2.3.0,<3.0.0)",
+    "redis (>=5.0.0,<6.0.0)",
+    "httpx (>=0.27.0,<1.0.0)",
+    "pybreaker (>=1.2.0,<2.0.0)",
+    "tenacity (>=9.0.0,<10.0.0)"
 ]
 
+
+[tool.poetry.group.test.dependencies]
+pytest = ">=8.0.0,<9.0.0"
+pytest-asyncio = ">=0.24.0,<1.0.0"
+httpx = ">=0.27.0,<1.0.0"
+testcontainers = {version = ">=4.0.0,<5.0.0", extras = ["postgres", "redis"]}
+fakeredis = ">=2.25.0,<3.0.0"
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "session"
+testpaths = ["tests"]
 
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]
