@@ -21,14 +21,14 @@ from src.cache import get_cached, set_cached, delete_cached, delete_cached_patte
 
 logger = logging.getLogger(__name__)
 
-CACHE_PREFIX = "application"
-ORDER_CACHE_PREFIX = "order"
-
 _NETWORK_ERRORS = (
     OrderServiceError,
     httpx.ConnectError,
     httpx.TimeoutException,
 )
+
+CACHE_PREFIX = "application"
+ORDER_CACHE_PREFIX = "order"
 
 
 class ApplicationService:
@@ -168,7 +168,6 @@ class ApplicationService:
             )
 
         except Exception as e:
-            logger.error(f"Order saga unexpected error for local_order={local_order.id}: {e}")
             await self.order_repository.update_status(
                 local_order.id,
                 OrderStatus.ERROR.value,

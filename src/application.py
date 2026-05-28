@@ -2,7 +2,7 @@ import asyncio
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
-from fastapi.responses import UJSONResponse
+from fastapi.responses import JSONResponse
 from starlette.middleware.cors import CORSMiddleware
 
 from src.exceptions import ValidationException, NotFoundException, AlreadyExistsException
@@ -21,9 +21,9 @@ from src.workers.order_worker import order_worker
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    task = asyncio.create_task(order_worker())
+    order_task = asyncio.create_task(order_worker())
     yield
-    task.cancel()
+    order_task.cancel()
 
 
 def _setup_exception_handlers(app: FastAPI) -> None:
@@ -44,7 +44,7 @@ def get_app() -> FastAPI:
     app = FastAPI(
         docs_url="/docs",
         openapi_url="/openapi.json",
-        default_response_class=UJSONResponse,
+        default_response_class=JSONResponse,
         lifespan=lifespan,
     )
 

@@ -1,0 +1,23 @@
+import sqlalchemy as sa
+from sqlalchemy.orm import Mapped, mapped_column
+from datetime import datetime
+from uuid import UUID
+from typing import Optional
+
+from src.models.base import Base
+
+
+class OutboxModel(Base):
+    __tablename__ = "outbox"
+
+    local_order_id: Mapped[UUID] = mapped_column(
+        sa.UUID(as_uuid=True),
+        sa.ForeignKey("local_orders.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    topic: Mapped[str] = mapped_column(sa.String(255), nullable=False)
+    payload_json: Mapped[str] = mapped_column(sa.Text, nullable=False)
+    idempotency_key: Mapped[str] = mapped_column(sa.String(36), nullable=False, unique=True)
+    published_at: Mapped[Optional[datetime]] = mapped_column(
+        sa.DateTime(timezone=True), nullable=True
+    )
