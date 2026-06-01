@@ -8,6 +8,7 @@ import httpx
 
 from src.repositories.application import ApplicationRepository
 from src.repositories.order import OrderRepository
+from src.repositories.outbox import OutboxRepository
 from src.clients.order_service import OrderServiceClient
 from src.services.user import UserService
 from src.schemas.application import ApplicationCreate, ApplicationUpdate, ApplicationRead
@@ -16,10 +17,13 @@ from src.schemas.order import (
     OrderItemPayload, OrderPayload,
 )
 from src.models.order import LocalOrderModel, OrderStatus
+from src.models.outbox import OutboxModel
 from src.exceptions import NotFoundException, OrderServiceError
 from src.cache import get_cached, set_cached, delete_cached, delete_cached_pattern
+from src.config import get_settings
 
 logger = logging.getLogger(__name__)
+settings = get_settings()
 
 _NETWORK_ERRORS = (
     OrderServiceError,
@@ -39,18 +43,31 @@ class ApplicationService:
         order_repository: OrderRepository,
         order_client: OrderServiceClient,
         user_service: UserService,
+        outbox_repository: OutboxRepository,
     ):
         self.repository = repository
         self.order_repository = order_repository
         self.order_client = order_client
         self.user_service = user_service
+        self.outbox_repository = outbox_repository
 
     async def create(self, data: ApplicationCreate, user_id: UUID, category_id: UUID) -> ApplicationRead:
         app = data.to_model(user_id, category_id)
         app = await self.repository.create(app)
-        logger.info(f"Application created with id={app.id}")
+        result = ApplicationRead.from_model(app)
+
+        await self.outbox_repository.create(OutboxModel(
+            aggregate_type="application",
+            aggregate_id=app.id,
+            event_type="application.created",
+            topic=settings.kafka_application_topic,
+            payload_json=result.model_dump_json(),
+            idempotency_key=str(uuid.uuid4()),
+        ))
+
+        logger.info(f"Application created with id={app.id}, outbox event queued")
         await delete_cached_pattern(f"{CACHE_PREFIX}:list:*")
-        return ApplicationRead.from_model(app)
+        return result
 
     async def get_all(self, skip: int = 0, limit: int = 100) -> List[ApplicationRead]:
         cache_key = f"{CACHE_PREFIX}:list:{skip}:{limit}"

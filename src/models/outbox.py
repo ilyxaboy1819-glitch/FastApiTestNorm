@@ -10,11 +10,9 @@ from src.models.base import Base
 class OutboxModel(Base):
     __tablename__ = "outbox"
 
-    local_order_id: Mapped[UUID] = mapped_column(
-        sa.UUID(as_uuid=True),
-        sa.ForeignKey("local_orders.id", ondelete="CASCADE"),
-        nullable=False,
-    )
+    aggregate_type: Mapped[str] = mapped_column(sa.String(100), nullable=False)
+    aggregate_id: Mapped[UUID] = mapped_column(sa.UUID(as_uuid=True), nullable=False)
+    event_type: Mapped[str] = mapped_column(sa.String(100), nullable=False)
     topic: Mapped[str] = mapped_column(sa.String(255), nullable=False)
     payload_json: Mapped[str] = mapped_column(sa.Text, nullable=False)
     idempotency_key: Mapped[str] = mapped_column(sa.String(36), nullable=False, unique=True)

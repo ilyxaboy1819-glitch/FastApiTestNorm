@@ -17,13 +17,16 @@ from src.routers.application import router as application_router
 from src.routers.role import router as role_router
 from src.routers.order import router as order_router
 from src.workers.order_worker import order_worker
+from src.workers.outbox_worker import outbox_worker
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     order_task = asyncio.create_task(order_worker())
+    outbox_task = asyncio.create_task(outbox_worker())
     yield
     order_task.cancel()
+    outbox_task.cancel()
 
 
 def _setup_exception_handlers(app: FastAPI) -> None:

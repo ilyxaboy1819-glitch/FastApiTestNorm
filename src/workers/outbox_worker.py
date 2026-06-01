@@ -16,6 +16,7 @@ BATCH_SIZE = 100
 
 
 async def outbox_worker() -> None:
+    logger.info("Outbox worker started")
     producer = AIOKafkaProducer(
         bootstrap_servers=settings.kafka_bootstrap_servers,
         enable_idempotence=True,

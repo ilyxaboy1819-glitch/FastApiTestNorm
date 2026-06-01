@@ -21,7 +21,9 @@ def upgrade() -> None:
     op.create_table(
         'outbox',
         sa.Column('id', sa.UUID(), nullable=False),
-        sa.Column('local_order_id', sa.UUID(), nullable=False),
+        sa.Column('aggregate_type', sa.String(100), nullable=False),
+        sa.Column('aggregate_id', sa.UUID(), nullable=False),
+        sa.Column('event_type', sa.String(100), nullable=False),
         sa.Column('topic', sa.String(255), nullable=False),
         sa.Column('payload_json', sa.Text(), nullable=False),
         sa.Column('idempotency_key', sa.String(36), nullable=False),
@@ -29,9 +31,9 @@ def upgrade() -> None:
         sa.Column('created_at', sa.DateTime(), server_default=sa.text('now()'), nullable=False),
         sa.Column('updated_at', sa.DateTime(), nullable=True),
         sa.Column('is_deleted', sa.Boolean(), server_default=sa.text('false'), nullable=False),
-        sa.ForeignKeyConstraint(['local_order_id'], ['local_orders.id'], ondelete='CASCADE'),
         sa.PrimaryKeyConstraint('id'),
         sa.UniqueConstraint('idempotency_key'),
+        sa.Index('ix_outbox_unpublished', 'published_at'),
     )
 
 
