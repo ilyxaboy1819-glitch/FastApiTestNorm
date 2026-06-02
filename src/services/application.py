@@ -55,19 +55,20 @@ class ApplicationService:
         app = data.to_model(user_id, category_id)
         app = await self.repository.create(app)
         result = ApplicationRead.from_model(app)
+        await self.outbox_repository.create(self._build_outbox_event(app.id, result))
+        logger.info(f"Application created with id={app.id}, outbox event queued")
+        return result
 
-        await self.outbox_repository.create(OutboxModel(
+    @staticmethod
+    def _build_outbox_event(app_id: UUID, result: ApplicationRead) -> OutboxModel:
+        return OutboxModel(
             aggregate_type="application",
-            aggregate_id=app.id,
+            aggregate_id=app_id,
             event_type="application.created",
             topic=settings.kafka_application_topic,
             payload_json=result.model_dump_json(),
-            idempotency_key=str(uuid.uuid4()),
-        ))
-
-        logger.info(f"Application created with id={app.id}, outbox event queued")
-        await delete_cached_pattern(f"{CACHE_PREFIX}:list:*")
-        return result
+            idempotency_key=f"application.created:{app_id}",
+        )
 
     async def get_all(self, skip: int = 0, limit: int = 100) -> List[ApplicationRead]:
         cache_key = f"{CACHE_PREFIX}:list:{skip}:{limit}"

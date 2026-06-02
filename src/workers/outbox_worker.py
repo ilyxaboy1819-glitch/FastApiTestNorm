@@ -41,12 +41,22 @@ async def _process_batch(producer: AIOKafkaProducer) -> None:
         if not records:
             return
 
-        for record in records:
+    published_ids = []
+    for record in records:
+        try:
             await producer.send_and_wait(
                 record.topic,
                 value=record.payload_json.encode(),
                 key=record.idempotency_key.encode(),
             )
-            await repo.mark_published(record.id)
+            published_ids.append(record.id)
+            logger.info(f"Sent outbox record {record.id} to {record.topic}")
+        except Exception as e:
+            logger.error(f"Failed to send outbox record {record.id}: {e}")
+
+    if published_ids:
+        async with SessionFactory() as session:
+            repo = OutboxRepository(session)
+            await repo.mark_published_batch(published_ids)
             await session.commit()
-            logger.info(f"Published outbox record {record.id} to {record.topic}")
+            logger.info(f"Marked {len(published_ids)} outbox records as published")

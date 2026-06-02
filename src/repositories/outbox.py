@@ -1,4 +1,5 @@
 from datetime import datetime, timezone
+from typing import List
 from uuid import UUID
 
 from sqlalchemy import select, update
@@ -21,14 +22,14 @@ class OutboxRepository:
         result = await self._session.execute(
             select(OutboxModel)
             .where(OutboxModel.published_at.is_(None))
-            .with_for_update(skip_locked=True)
+            .order_by(OutboxModel.created_at)
             .limit(limit)
         )
         return list(result.scalars().all())
 
-    async def mark_published(self, record_id: UUID) -> None:
+    async def mark_published_batch(self, record_ids: List[UUID]) -> None:
         await self._session.execute(
             update(OutboxModel)
-            .where(OutboxModel.id == record_id)
+            .where(OutboxModel.id.in_(record_ids))
             .values(published_at=datetime.now(timezone.utc))
         )

@@ -26,7 +26,7 @@ def upgrade() -> None:
         sa.Column('event_type', sa.String(100), nullable=False),
         sa.Column('topic', sa.String(255), nullable=False),
         sa.Column('payload_json', sa.Text(), nullable=False),
-        sa.Column('idempotency_key', sa.String(36), nullable=False),
+        sa.Column('idempotency_key', sa.String(255), nullable=False),
         sa.Column('published_at', sa.DateTime(timezone=True), nullable=True),
         sa.Column('created_at', sa.DateTime(), server_default=sa.text('now()'), nullable=False),
         sa.Column('updated_at', sa.DateTime(), nullable=True),
