@@ -7,6 +7,7 @@ from src.repositories.user import UserRepository
 from src.repositories.application import ApplicationRepository
 from src.repositories.order import OrderRepository
 from src.repositories.role import RoleRepository
+from src.repositories.outbox import OutboxRepository
 from src.services.application import ApplicationService
 from src.services.role import RoleService
 from src.services.user import UserService
@@ -34,12 +35,17 @@ def get_order_repository(session: AsyncSession = Depends(get_session)) -> OrderR
     return OrderRepository(session)
 
 
+def get_outbox_repository(session: AsyncSession = Depends(get_session)) -> OutboxRepository:
+    return OutboxRepository(session)
+
+
 def get_application_service(
     repo: ApplicationRepository = Depends(get_application_repository),
     order_repo: OrderRepository = Depends(get_order_repository),
     user_service: UserService = Depends(get_user_service),
+    outbox_repo: OutboxRepository = Depends(get_outbox_repository),
 ) -> ApplicationService:
-    return ApplicationService(repo, order_repo, order_service_client, user_service)
+    return ApplicationService(repo, order_repo, order_service_client, user_service, outbox_repo)
 
 
 def get_role_service(repo: RoleRepository = Depends(get_role_repository)) -> RoleService:
