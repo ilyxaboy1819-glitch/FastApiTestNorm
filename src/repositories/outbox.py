@@ -5,7 +5,7 @@ from uuid import UUID
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.models.outbox import OutboxModel
+from src.models.outbox import OutboxModel, OutboxStatus
 
 
 class OutboxRepository:
@@ -18,18 +18,37 @@ class OutboxRepository:
         await self._session.flush()
         return record
 
-    async def get_unpublished(self, limit: int = 100) -> list[OutboxModel]:
+    async def claim_batch(self, limit: int = 100) -> list[OutboxModel]:
         result = await self._session.execute(
             select(OutboxModel)
-            .where(OutboxModel.published_at.is_(None))
+            .where(OutboxModel.status == OutboxStatus.PENDING.value)
             .order_by(OutboxModel.created_at)
             .limit(limit)
+            .with_for_update(skip_locked=True)
         )
-        return list(result.scalars().all())
+        records = list(result.scalars().all())
+        if records:
+            await self._session.execute(
+                update(OutboxModel)
+                .where(OutboxModel.id.in_([r.id for r in records]))
+                .values(status=OutboxStatus.PROCESSING.value)
+            )
+            await self._session.flush()
+        return records
 
     async def mark_published_batch(self, record_ids: List[UUID]) -> None:
         await self._session.execute(
             update(OutboxModel)
             .where(OutboxModel.id.in_(record_ids))
-            .values(published_at=datetime.now(timezone.utc))
+            .values(
+                status=OutboxStatus.PUBLISHED.value,
+                published_at=datetime.now(timezone.utc),
+            )
+        )
+
+    async def release_batch(self, record_ids: List[UUID]) -> None:
+        await self._session.execute(
+            update(OutboxModel)
+            .where(OutboxModel.id.in_(record_ids))
+            .values(status=OutboxStatus.PENDING.value)
         )
